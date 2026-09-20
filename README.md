@@ -2,51 +2,77 @@
 
 Capstone project — a ride booking platform where users request rides, drivers accept trips, and both sides track ride status in real time.
 
-## Team
+## Team & Feature Ownership
 
-| Name | Feature | Focus |
-|---|---|---|
-| You | Rider + Driver apps (with Teammate 1) | Full stack — both apps, shared foundation |
-| Teammate 1 | Rider + Driver apps (with You) | Full stack — both apps |
-| Teammate 2 | Admin Dashboard | Full stack — monitoring, user/driver management, analytics |
-| Teammate 3 | Matching & Pricing Engine | Backend service — driver matching, fare estimation |
-| Teammate 4 | Notifications & Ratings/Reviews | Backend service + small shared UI components |
+| Name          | Feature                         | Scope                                                                          |
+| ------------- | ------------------------------- | ------------------------------------------------------------------------------ |
+| **Ngozi**     | Driver App                      | Full stack — driver-facing UI and its backend routes                           |
+| **Enoch**     | Rider App                       | Full stack — rider-facing UI and its backend routes                            |
+| **Oluwakemi** | Admin Dashboard                 | Full stack — monitoring, user/driver management, analytics                     |
+| **Gideon**    | Matching & Pricing Engine       | Backend service — finds nearest available driver, calculates fare estimates    |
+| **Richard**   | Notifications & Ratings/Reviews | Backend service + small shared UI components used inside the Rider/Driver apps |
 
-Shared foundation (auth, DB models, ride state machine, real-time layer) is already built and
-pushed — see `docs/architecture.md` for what's there and who owns what going forward.
+The shared foundation (auth, database models, the ride status logic, and real-time updates) is already built and pushed to the repo. Nobody touches those files without flagging it in the group chat first — they affect everyone's work.
 
-## Repository Structure
+---
 
-```
-ride-booking-app/
-├── backend/          # REST API + WebSocket server (shared foundation + everyone's feature routes)
-│   └── src/
-│       ├── controllers/
-│       ├── models/        # User, Ride, Rating — shared, don't duplicate
-│       ├── routes/        # auth (done), ride, admin, + new: rating.routes.js
-│       ├── services/      # rideStateMachine, authService (done) + new: matchingEngine, pricingEngine, notificationService
-│       ├── sockets/        # real-time location/status broadcasting (done)
-│       └── config/
-├── rider-app/          # Rider-facing client app
-├── driver-app/         # Driver-facing client app
-├── admin-dashboard/     # Admin-facing client app
-├── docs/               # architecture notes, API spec, ER diagram, meeting notes
-└── .github/            # issue templates, CI workflows
-```
+## Feature Breakdown by Side
 
-## Getting Started
+Here's a complete breakdown by side, with the connections between them made explicit.
 
-Each subfolder has its own README with setup instructions. Backend is already runnable — see `backend/README.md`.
+### Rider-Side Features (Enoch)
 
-## Branching Convention
+| Feature                     | Description                                     | Connects To                                                |
+| --------------------------- | ----------------------------------------------- | ---------------------------------------------------------- |
+| Sign up / Login             | Phone/email + OTP or password auth              | Auth service (shared)                                      |
+| Profile management          | Name, photo, saved addresses, payment method    | User DB (shared)                                           |
+| Ride request                | Set pickup + drop-off, choose ride type         | Matching engine (Gideon)                                   |
+| Fare & ETA estimate         | Shown before confirming request                 | Pricing engine (Gideon) + Maps API                         |
+| Driver matching wait screen | Shows "finding driver" state                    | Matching engine → notifies Driver app                      |
+| Live driver tracking        | See driver's live location moving toward pickup | Location service (shared, real-time)                       |
+| Ride status updates         | Accepted / arriving / started / completed       | Status engine (shared) — same state machine Driver updates |
+| In-app chat/call (optional) | Contact driver directly                         | Messaging service (stretch goal)                           |
+| Cancel ride                 | Before or shortly after acceptance              | Status engine → notifies Driver                            |
+| Payment                     | Charge on completion                            | Payment gateway (stretch goal)                             |
+| Rate & review driver        | After trip ends                                 | Ratings DB (Richard) → affects Driver profile              |
+| Ride history                | Past trips, receipts                            | User DB (shared)                                           |
 
-- `main` — always deployable/demo-ready. Direct pushes are blocked; only merges via reviewed PRs get in.
-- `feature/<short-description>` — everyone branches off `main`, works, opens a PR back into `main`
-- Only the repo owner can actually merge a PR (branch protection — see below); everyone else needs their PR reviewed and merged by them
-- No one merges their own PR without at least one review
-- Merge to `main` only once it's confirmed to run locally
+### Driver-Side Features (Ngozi)
 
-## Docs
+| Feature                        | Description                            | Connects To                                     |
+| ------------------------------ | -------------------------------------- | ----------------------------------------------- |
+| Sign up / Login + verification | ID, license, vehicle docs              | Auth service + Admin approval (Oluwakemi)       |
+| Profile & vehicle info         | Car details, plate number, documents   | User DB (shared)                                |
+| Online/Offline toggle          | Controls visibility to matching engine | Matching engine (Gideon)                        |
+| Incoming ride request alert    | Accept/reject within time window       | Matching engine → pushed from Rider request     |
+| Navigation to pickup/drop-off  | Turn-by-turn directions                | Maps API                                        |
+| Update trip status             | Arrived, started, completed            | Status engine — same one Rider sees update live |
+| Live location broadcast        | Sent continuously while on trip        | Location service → streamed to Rider app        |
+| Earnings dashboard             | Per trip, daily, weekly totals         | Payment/earnings DB (stretch goal)              |
+| Trip history                   | Completed rides log                    | User DB (shared)                                |
+| Rate rider                     | After trip ends                        | Ratings DB (Richard) → affects Rider profile    |
+| Cancel/reject ride             | With reason                            | Status engine → notifies Rider                  |
 
-- [`docs/architecture.md`](docs/architecture.md) — system design & data flow
-- [`docs/api-spec.md`](docs/api-spec.md) — API contract between backend and both apps
+### Shared Backend Features (already built — do not duplicate)
+
+| Feature                          | Description                            | Used By                                |
+| -------------------------------- | -------------------------------------- | -------------------------------------- |
+| Authentication service           | Issues tokens, manages sessions        | Everyone                               |
+| User & Driver database           | Stores all profile/account data        | Everyone                               |
+| Ride state machine               | Single source of truth for ride status | Everyone reads/writes to this          |
+| Real-time location service       | WebSocket broadcasting live GPS        | Rider ↔ Driver                         |
+| Maps/Geolocation API integration | Routing, distance, ETA calculation     | Rider app, Driver app, Matching engine |
+
+### Feature-Owner Backend Services (new — being built)
+
+| Feature                  | Owner     | Description                                                         |
+| ------------------------ | --------- | ------------------------------------------------------------------- |
+| Matching engine          | Gideon    | Finds nearest available driver, sends request to Driver app         |
+| Pricing engine           | Gideon    | Calculates fare estimate & final fare                               |
+| Notification service     | Richard   | Push/in-app notifications triggered by every ride status change     |
+| Ratings & reviews system | Richard   | Stores and aggregates ratings; feeds both Rider and Driver profiles |
+| Admin dashboard          | Oluwakemi | Monitor rides, manage users/drivers, view analytics                 |
+
+---
+
+## How It All Connects (Flow Summary)
