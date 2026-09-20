@@ -45,6 +45,9 @@ const userSchema = new mongoose.Schema(
 
     ratingAverage: { type: Number, default: 5 },
     ratingCount: { type: Number, default: 0 },
+
+    // Set by Admin (customer or driver management)
+    isSuspended: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
