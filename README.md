@@ -76,3 +76,51 @@ Here's a complete breakdown by side, with the connections between them made expl
 ---
 
 ## How It All Connects (Flow Summary)
+
+Rider requests ride
+→ Matching Engine (Gideon) finds nearest online Driver
+→ Driver gets alert (Ngozi's Driver app)
+→ Driver accepts → Status Engine updates "accepted"
+→ Both apps subscribe to Location Service (live tracking begins)
+→ Driver updates status (arrived → started → completed)
+→ Status Engine pushes each update to Rider in real time
+→ On completion: Payment Gateway charges Rider, credits Driver
+→ Notification Service (Richard) prompts both sides to rate each other → Ratings DB updated
+→ Admin Dashboard (Oluwakemi) logs the full ride record
+
+**Key principle:** Rider and Driver apps never talk to each other directly — everything routes through the shared backend (matching engine, status engine, location service). That's why the shared foundation was built first, and why changes to it need a heads-up in the group chat.
+
+---
+
+## Repository Structure
+
+ride-booking-app/
+├── backend/ # REST API + WebSocket server (shared foundation + everyone's feature routes)
+│ └── src/
+│ ├── controllers/
+│ ├── models/ # User, Ride, Rating — shared, don't duplicate
+│ ├── routes/ # auth (done), ride, admin, + new: rating.routes.js
+│ ├── services/ # rideStateMachine, authService (done) + new: matchingEngine, pricingEngine, notificationService
+│ ├── sockets/ # real-time location/status broadcasting (done)
+│ └── config/
+├── rider-app/ # Enoch — rider-facing client app
+├── driver-app/ # Ngozi — driver-facing client app
+├── admin-dashboard/ # Oluwakemi — admin-facing client app
+├── docs/ # architecture notes, API spec, ER diagram, meeting notes
+└── .github/ # issue templates, CI workflows
+
+## Getting Started
+
+Each subfolder has its own README with setup instructions. Backend is already runnable — see `backend/README.md`.
+
+## Branching Convention
+
+- `main` — always deployable/demo-ready. Protected: direct pushes and merges are blocked for everyone except the repo owner.
+- `feature/<short-description>` — everyone branches off `main`, works, opens a PR back into `main`
+- PRs need at least 1 review before they can be merged; only the repo owner can complete the merge
+- Merge to `main` only once it's confirmed to run locally
+
+## Docs
+
+- [`docs/architecture.md`](docs/architecture.md) — system design & data flow
+- [`docs/api-spec.md`](docs/api-spec.md) — API contract between backend and all apps
