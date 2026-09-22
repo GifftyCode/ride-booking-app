@@ -1,10 +1,31 @@
 # Rider App
 
-Rider-facing client. Handles auth, ride requests, fare/ETA display, live driver tracking, ride history, and ratings.
+Owned by Enoch. Rider-facing client — auth, ride requests, fare/ETA display, live driver tracking,
+ride history, and ratings.
+
+## Stack
+
+React + Vite + Tailwind CSS, styled through the shared design system in `../shared-ui/`.
 
 ## Setup
 
-_To be filled in once the client stack is chosen (React Native, Flutter, web, etc.)._
+From the **repo root** (not this folder) run `npm install` once — npm workspaces installs every
+app's dependencies together and links `shared-ui` automatically. Then:
+
+```bash
+npm run dev:rider
+```
+
+## Using the design system
+
+Import shared components instead of building your own from scratch:
+
+```jsx
+import { Button, Input, Card, StatusBadge } from "shared-ui";
+```
+
+See `../shared-ui/README.md` for the full list and how to add a new shared component if you need
+one that doesn't exist yet.
 
 ## Key Screens
 
@@ -15,3 +36,10 @@ _To be filled in once the client stack is chosen (React Native, Flutter, web, et
 - Trip in progress
 - Rate driver
 - Ride history
+
+## Backend you own
+
+Extend `backend/src/routes/ride.routes.js` (ride creation, cancel, history) and build:
+- `backend/src/services/pricingEngine.js` — fare estimate calculation
+- `backend/src/services/notificationService.js` — status-change notifications
+- `backend/src/routes/rating.routes.js` — submit/view ratings (the `Rating` model already exists)

@@ -13,9 +13,21 @@ All three share the same login screen (shared auth, admin role) and the same das
 agree on that shell together first so the three sections plug into one consistent app instead of
 three disconnected pages.
 
+## Stack
+
+React + Vite + Tailwind CSS, styled through the shared design system in `../shared-ui/`.
+
 ## Setup
 
-_To be filled in once the client stack is chosen (React/Next.js is a natural fit for an admin panel)._
+From the **repo root** (not this folder) run `npm install` once — npm workspaces installs every
+app's dependencies together and links `shared-ui` automatically. Then:
+
+```bash
+npm run dev:admin
+```
+
+Import shared components instead of building your own: `import { Button, Input, Card, StatusBadge } from "shared-ui";`
+— see `../shared-ui/README.md` for the full list.
 
 ## Customer Management (Oluwakemi)
 

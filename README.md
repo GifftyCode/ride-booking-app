@@ -103,10 +103,17 @@ Rider requests ride
 
 ---
 
+## Platform & Stack
+
+**Responsive web app** — React + Vite + Tailwind CSS across all three apps, not native mobile.
+See [`docs/design-system.md`](docs/design-system.md) for why, plus the shared color palette and
+rules for keeping all three apps visually consistent.
+
 ## Repository Structure
 
 ```
 ride-booking-app/
+├── package.json                # npm workspaces root — run `npm install` here once
 ├── backend/                    # REST API + WebSocket server
 │   └── src/
 │       ├── controllers/
@@ -127,6 +134,7 @@ ride-booking-app/
 │       │   └── notificationService.js    # Enoch — new
 │       ├── sockets/                 # real-time location/status broadcasting (done)
 │       └── config/
+├── shared-ui/                  # design system — colors, fonts, Button/Input/Card/StatusBadge
 ├── rider-app/                  # Enoch — rider-facing client app
 ├── driver-app/                 # Ngozi — driver-facing client app
 ├── admin-dashboard/            # split 3 ways
@@ -134,13 +142,19 @@ ride-booking-app/
 │       ├── customers/               # Oluwakemi
 │       ├── drivers/                 # Gideon
 │       └── rides-analytics/         # Richard
-├── docs/                       # architecture notes, API spec, ER diagram, meeting notes
+├── docs/                       # architecture notes, API spec, design system, meeting notes
 └── .github/                    # issue templates, CI workflows
 ```
 
 ## Getting Started
 
-Each subfolder has its own README with setup instructions. Backend is already runnable — see `backend/README.md`.
+```bash
+npm install          # run once, from the repo root — installs every app + shared-ui together
+npm run dev:rider     # or dev:driver / dev:admin / dev:backend
+```
+
+Each subfolder has its own README with more detail. Backend is already runnable — see `backend/README.md`.
+UI components come from `shared-ui/` — see `shared-ui/README.md` before building your own.
 
 ## Branching Convention
 
@@ -153,3 +167,4 @@ Each subfolder has its own README with setup instructions. Backend is already ru
 
 - [`docs/architecture.md`](docs/architecture.md) — system design & data flow
 - [`docs/api-spec.md`](docs/api-spec.md) — API contract between backend and all apps
+- [`docs/design-system.md`](docs/design-system.md) — platform decision, stack, colors, and UI rules
