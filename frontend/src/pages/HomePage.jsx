@@ -4,13 +4,26 @@ import { RiderPage } from "./RiderPage";
 
 export function HomePage() {
   return (
-    <main className="min-h-screen bg-slate-50 p-6">
-      <h1 className="mb-6 text-3xl font-bold text-slate-900">Ride Booking App</h1>
-      <div className="grid gap-4 lg:grid-cols-3">
+    <main className="app-shell">
+      <section className="hero">
+        <div>
+          <p className="hero-kicker">Ride Booking MVP</p>
+          <h1>Book rides, accept trips, and monitor everything in one place.</h1>
+          <p>
+            A colorful starter interface for the core flow: request, accept, track, complete.
+          </p>
+        </div>
+        <div className="hero-panel">
+          <span>Live flow</span>
+          <strong>Request → Accept → Track → Complete</strong>
+        </div>
+      </section>
+
+      <section className="role-grid">
         <RiderPage />
         <DriverPage />
         <AdminPage />
-      </div>
+      </section>
     </main>
   );
 }

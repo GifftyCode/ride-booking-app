@@ -1,7 +1,3 @@
-export function Card({ children, className = "" }) {
-  return (
-    <section className={`rounded-md border border-slate-200 bg-white p-4 shadow-sm ${className}`}>
-      {children}
-    </section>
-  );
+export function Card({ children, accent = "blue", className = "" }) {
+  return <section className={`card card-${accent} ${className}`}>{children}</section>;
 }
