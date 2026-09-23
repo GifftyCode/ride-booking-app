@@ -10,11 +10,27 @@ React + Vite + Tailwind CSS, styled through the shared design system in `../shar
 ## Setup
 
 From the **repo root** (not this folder) run `npm install` once — npm workspaces installs every
-app's dependencies together and links `shared-ui` automatically. Then:
+app's dependencies together and links `shared-ui` automatically. Copy `.env.example` to `.env`
+here if you need to point at a backend that isn't on `localhost:5000`. Then:
 
 ```bash
 npm run dev:driver
 ```
+
+## Build progress
+
+- [x] Auth (login, signup, token persistence, protected routing) — `src/context/AuthContext.jsx`, `src/pages/Login.jsx`, `src/pages/Signup.jsx`
+- [ ] Profile & vehicle info screen
+- [ ] Online/offline toggle + home dashboard (currently a placeholder in `src/pages/Dashboard.jsx`)
+- [ ] Incoming ride request (accept/reject)
+- [ ] Navigation to pickup / drop-off
+- [ ] Trip status controls (arrived / start / complete)
+- [ ] Earnings dashboard
+- [ ] Trip history
+- [ ] Rate rider
+
+`src/lib/api.js` is the one place that talks to the backend — add new functions there as each
+screen needs them, rather than calling `fetch` directly inside a component.
 
 ## Using the design system
 
