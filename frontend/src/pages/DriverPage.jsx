@@ -3,10 +3,16 @@ import { Card } from "../components/Card";
 
 export function DriverPage() {
   return (
-    <Card>
-      <h2 className="text-xl font-semibold">Driver console</h2>
-      <p className="mt-2 text-slate-600">Go online, accept rides, and update trip status.</p>
-      <Button className="mt-4" type="button">Go online</Button>
+    <Card accent="green">
+      <div className="card-icon">D</div>
+      <p className="eyebrow green-text">Driver</p>
+      <h2>Accept trips</h2>
+      <p className="muted">Go online, receive ride requests, and update every trip status.</p>
+      <div className="metric-row">
+        <span>Today</span>
+        <strong>₦0 earned</strong>
+      </div>
+      <Button type="button" variant="success">Go online</Button>
     </Card>
   );
 }
