@@ -7,12 +7,13 @@
  */
 
 const VALID_TRANSITIONS = {
-  requested: ["accepted", "cancelled"],
-  accepted: ["driver_arriving", "cancelled"],
-  driver_arriving: ["in_progress", "cancelled"],
+  requested: ["accepted", "cancelled_by_rider", "cancelled_by_driver"],
+  accepted: ["arrived", "cancelled_by_rider", "cancelled_by_driver"],
+  arrived: ["in_progress", "cancelled_by_rider", "cancelled_by_driver"],
   in_progress: ["completed"],
   completed: [],
-  cancelled: [],
+  cancelled_by_rider: [],
+  cancelled_by_driver: [],
 };
 
 class InvalidTransitionError extends Error {
@@ -46,8 +47,11 @@ function applyTransition(ride, nextStatus) {
 
   const timestampField = {
     accepted: "acceptedAt",
+    arrived: "arrivedAt",
     in_progress: "startedAt",
     completed: "completedAt",
+    cancelled_by_rider: "cancelledAt",
+    cancelled_by_driver: "cancelledAt",
   }[nextStatus];
 
   if (timestampField) {

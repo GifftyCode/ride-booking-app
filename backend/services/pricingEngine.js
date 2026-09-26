@@ -1,5 +1,5 @@
-const BASE_FARE = 800;
-const PER_KM_RATE = 250;
+const BASE_FARE = Number(process.env.BASE_FARE || 1000);
+const PER_KM_RATE = Number(process.env.RATE_PER_KM || 500);
 const PER_MINUTE_RATE = 45;
 
 function calculateFareEstimate({ distanceKm = 0, durationMinutes = 0 } = {}) {
