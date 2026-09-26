@@ -6,14 +6,15 @@ const { notifyRideRequested, notifyRideStatusChanged } = require("../services/no
 
 async function createRide(req, res) {
   try {
-    const { pickup, dropoff, fareEstimate } = req.body;
-    const estimate = fareEstimate ?? calculateFareEstimate({ pickup, dropoff }).fareEstimate;
+    const { pickup, destination, distanceInKm = 0, estimatedFare } = req.body;
+    const estimate = estimatedFare ?? calculateFareEstimate({ distanceKm: distanceInKm }).fareEstimate;
 
     const ride = await Ride.create({
-      rider: req.user.id,
+      riderId: req.user.id,
       pickup,
-      dropoff,
-      fareEstimate: estimate,
+      destination,
+      distanceInKm,
+      estimatedFare: estimate,
     });
 
     const drivers = await findAvailableDrivers({ pickup });
@@ -36,7 +37,7 @@ async function acceptRide(req, res) {
     const ride = await Ride.findById(req.params.id);
     if (!ride) return res.status(404).json({ error: "Ride not found" });
 
-    ride.driver = req.user.id;
+    ride.driverId = req.user.id;
     applyTransition(ride, "accepted");
     await ride.save();
 
@@ -67,9 +68,8 @@ async function cancelRide(req, res) {
     const ride = await Ride.findById(req.params.id);
     if (!ride) return res.status(404).json({ error: "Ride not found" });
 
-    applyTransition(ride, "cancelled");
-    ride.cancelledBy = req.user.role;
-    ride.cancelReason = req.body.reason;
+    applyTransition(ride, req.user.role === "driver" ? "cancelled_by_driver" : "cancelled_by_rider");
+    ride.cancellationReason = req.body.reason;
     await ride.save();
 
     notifyRideStatusChanged({ ride });
@@ -80,7 +80,7 @@ async function cancelRide(req, res) {
 }
 
 async function getMyRideHistory(req, res) {
-  const filter = req.user.role === "driver" ? { driver: req.user.id } : { rider: req.user.id };
+  const filter = req.user.role === "driver" ? { driverId: req.user.id } : { riderId: req.user.id };
   const rides = await Ride.find(filter).sort({ createdAt: -1 });
   res.json({ rides });
 }

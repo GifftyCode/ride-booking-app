@@ -1,13 +1,10 @@
-const User = require("../models/User");
+const DriverProfile = require("../models/DriverProfile");
 
 async function findAvailableDrivers({ pickup, limit = 5 } = {}) {
-  const drivers = await User.find({
-    role: "driver",
-    isSuspended: false,
-    "driverProfile.isVerified": true,
-    "driverProfile.isOnline": true,
+  const drivers = await DriverProfile.find({
+    isAvailable: true,
   })
-    .select("name phone driverProfile ratingAverage ratingCount")
+    .populate("userId", "fullName phone email role")
     .limit(limit);
 
   // TODO: sort by distance from pickup once maps/geospatial data is ready.

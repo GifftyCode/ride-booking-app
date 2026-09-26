@@ -30,7 +30,7 @@ router.get("/:id", requireAuth, getRide);
 // PATCH /api/rides/:id/accept - Driver accepts a requested ride
 router.patch("/:id/accept", requireAuth, requireRole("driver"), acceptRide);
 
-// PATCH /api/rides/:id/status  { status: "driver_arriving" | "in_progress" | "completed" }
+// PATCH /api/rides/:id/status  { status: "arrived" | "in_progress" | "completed" }
 router.patch("/:id/status", requireAuth, requireRole("driver"), updateRideStatus);
 
 // PATCH /api/rides/:id/cancel - either rider or driver
