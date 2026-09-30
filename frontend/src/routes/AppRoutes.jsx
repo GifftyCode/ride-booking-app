@@ -7,6 +7,7 @@ import { LoginPage } from "../pages/LoginPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
 import { RegisterPage } from "../pages/RegisterPage";
 import { RiderDashboardPage } from "../pages/RiderDashboardPage";
+import { RiderRidePage } from "../pages/RiderRidePage";
 import { UnauthorizedPage } from "../pages/UnauthorizedPage";
 
 function Navigation() {
@@ -89,6 +90,7 @@ export function AppRoutes() {
             </RiderRoute>
           }
         />
+        <Route path="/rider/rides/:rideId" element={<RiderRoute><RiderRidePage /></RiderRoute>} />
         <Route
           path="/driver/dashboard"
           element={

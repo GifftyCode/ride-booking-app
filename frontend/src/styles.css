@@ -509,6 +509,17 @@ select {
   margin-top: 22px;
 }
 
+.location-fields { display: grid; gap: 12px; min-width: 0; margin: 0; padding: 16px; border: 1px solid #dce5f2; border-radius: 8px; }
+.location-fields legend { padding: 0 6px; color: #17324d; font-weight: 900; }
+.location-fields .quick-form { margin-top: 0; }
+.tracking-page { display: grid; gap: 16px; }
+.tracking-page h1 { text-transform: capitalize; }
+.finding-driver { margin: 0; padding: 14px; border-radius: 8px; color: #135cc8; background: #edf4ff; font-weight: 900; }
+.ride-details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: 0; }
+.ride-details div { padding: 16px; border-radius: 8px; background: #f4f7fb; overflow-wrap: anywhere; }
+.ride-details dt { color: #64748b; font-size: .88rem; font-weight: 800; }
+.ride-details dd { margin: 6px 0 0; font-weight: 850; }
+
 .driver-toggle {
   max-width: 320px;
   margin-top: 24px;

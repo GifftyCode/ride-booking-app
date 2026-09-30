@@ -3,6 +3,8 @@ const router = express.Router();
 const { requireAuth, requireRole } = require("../middleware/auth.middleware");
 const {
   createRide,
+  estimateRide,
+  getCurrentRide,
   getRide,
   acceptRide,
   updateRideStatus,
@@ -19,6 +21,8 @@ const {
  */
 
 // POST /api/rides - Rider creates a ride request
+router.post("/estimate", requireAuth, requireRole("rider"), estimateRide);
+router.get("/current", requireAuth, requireRole("rider"), getCurrentRide);
 router.post("/", requireAuth, requireRole("rider"), createRide);
 
 // GET /api/rides/history/mine - rider or driver's past rides
