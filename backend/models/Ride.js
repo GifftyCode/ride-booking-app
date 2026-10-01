@@ -44,5 +44,6 @@ const rideSchema = new mongoose.Schema(
 
 rideSchema.index({ riderId: 1, status: 1 });
 rideSchema.index({ driverId: 1, status: 1 });
+rideSchema.index({ status: 1, driverId: 1, requestedAt: 1 });
 
 module.exports = mongoose.model("Ride", rideSchema);

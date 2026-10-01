@@ -4,6 +4,8 @@ const { requireAuth, requireRole } = require("../middleware/auth.middleware");
 const {
   createRide,
   getRide,
+  getAvailableRides,
+  getCurrentRiderRide,
   acceptRide,
   updateRideStatus,
   cancelRide,
@@ -20,6 +22,10 @@ const {
 
 // POST /api/rides - Rider creates a ride request
 router.post("/", requireAuth, requireRole("rider"), createRide);
+router.get("/current", requireAuth, requireRole("rider"), getCurrentRiderRide);
+
+// GET /api/rides/available?page=1&limit=10 - available drivers browse requests
+router.get("/available", requireAuth, requireRole("driver"), getAvailableRides);
 
 // GET /api/rides/history/mine - rider or driver's past rides
 router.get("/history/mine", requireAuth, getMyRideHistory);

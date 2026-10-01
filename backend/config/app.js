@@ -4,6 +4,7 @@ const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 
 const authRoutes = require("../routes/auth.routes");
+const driverRoutes = require("../routes/driver.routes");
 const rideRoutes = require("../routes/ride.routes");
 const ratingRoutes = require("../routes/rating.routes");
 const { getDatabaseStatus } = require("./database");
@@ -70,6 +71,7 @@ function createApp() {
   app.get("/health", (req, res) => res.redirect("/api/health"));
 
   app.use("/api/auth", authRoutes);
+  app.use("/api/drivers", driverRoutes);
   app.use("/api/rides", rideRoutes);
   app.use("/api/ratings", ratingRoutes);
 
