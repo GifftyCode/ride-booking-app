@@ -56,4 +56,7 @@ rideSchema.index(
   }
 );
 
+// Helps drivers efficiently fetch available ride requests.
+rideSchema.index({ status: 1, driverId: 1, requestedAt: 1 });
+
 module.exports = mongoose.model("Ride", rideSchema);

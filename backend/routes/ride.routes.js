@@ -7,6 +7,8 @@ const {
   estimateRide,
   getCurrentRide,
   getRide,
+  getAvailableRides,
+  getCurrentRiderRide,
   acceptRide,
   updateRideStatus,
   cancelRide,
@@ -21,10 +23,17 @@ const {
  * Everyone shares: the model, the state machine, and this file's transition logic.
  */
 
-// POST /api/rides - Rider creates a ride request
-router.post("/estimate", requireAuth, requireRole("rider"), asyncHandler(estimateRide));
-router.get("/current", requireAuth, requireRole("rider"), asyncHandler(getCurrentRide));
-router.post("/", requireAuth, requireRole("rider"), asyncHandler(createRide));
+// POST /api/rides/estimate - rider gets fare estimate
+router.post("/estimate",requireAuth,requireRole("rider"),asyncHandler(estimateRide));
+
+// POST /api/rides - rider creates a ride request
+router.post("/",requireAuth,requireRole("rider"),asyncHandler(createRide));
+
+// GET /api/rides/current - rider gets current active ride
+router.get("/current",requireAuth,requireRole("rider"),asyncHandler(getCurrentRiderRide));
+
+// GET /api/rides/available - available requests for drivers
+router.get("/available",requireAuth,requireRole("driver"),asyncHandler(getAvailableRides));
 
 // GET /api/rides/history/mine - rider or driver's past rides
 router.get("/history/mine", requireAuth, asyncHandler(getMyRideHistory));

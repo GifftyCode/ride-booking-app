@@ -1,27 +1,80 @@
-import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { cancelRide, getRide } from "../services/rides.service";
-import { getApiError } from "../services/api";
-import { formatCurrency } from "../utils/formatCurrency";
+import { Link, useParams } from "react-router-dom";
+import { useRideStatus } from "../hooks/useRideStatus";
 
 export function RiderRidePage() {
-  const { rideId } = useParams(); const navigate = useNavigate();
-  const [ride, setRide] = useState(null); const [loading, setLoading] = useState(true); const [error, setError] = useState(""); const [busy, setBusy] = useState(false);
-  async function refresh() { try { const result = await getRide(rideId); setRide(result.ride || result.data?.ride); setError(""); } catch (e) { setError(getApiError(e)); } finally { setLoading(false); } }
-  useEffect(() => { refresh(); }, [rideId]);
-  async function cancel() {
-    if (!window.confirm("Cancel this ride request?")) return;
-    setBusy(true); setError("");
-    try { const result = await cancelRide(rideId, "Cancelled by rider"); setRide(result.ride || result.data?.ride); }
-    catch (e) { setError(getApiError(e)); }
-    finally { setBusy(false); }
+  const { rideId } = useParams();
+  const { ride, loading, error, notFound } = useRideStatus(rideId);
+
+  if (loading && !ride) return <main className="page-panel driver-loading" aria-live="polite">Loading ride tracking...</main>;
+  if (notFound) {
+    return (
+      <main className="page-panel tracking-page">
+        <p className="eyebrow orange-text">Ride unavailable</p>
+        <h1>We could not find this ride</h1>
+        <p className="form-error" role="alert">{error || "The ride may have been removed."}</p>
+        <Link className="btn btn-secondary" to="/rider/dashboard">Back to dashboard</Link>
+      </main>
+    );
   }
-  if (loading) return <main className="page-panel">Loading ride…</main>;
-  if (!ride) return <main className="page-panel"><h1>Ride unavailable</h1><p className="form-error">{error || "Ride not found."}</p><button className="btn btn-secondary" onClick={() => navigate("/rider/dashboard")}>Back to dashboard</button></main>;
-  return <main className="page-panel tracking-page"><p className="eyebrow blue-text">Ride tracking</p><h1>{ride.status.replaceAll("_", " ")}</h1>
-    {ride.status === "requested" && <p className="finding-driver" role="status">Finding a driver…</p>}
-    {error && <p className="form-error" role="alert">{error}</p>}
-    <dl className="ride-details"><div><dt>Pickup</dt><dd>{ride.pickup.address}</dd></div><div><dt>Destination</dt><dd>{ride.destination.address}</dd></div><div><dt>Distance</dt><dd>{Number(ride.distanceInKm).toFixed(2)} km</dd></div><div><dt>Estimated fare</dt><dd>{formatCurrency(ride.estimatedFare)}</dd></div><div><dt>Requested</dt><dd>{new Date(ride.requestedAt || ride.createdAt).toLocaleString()}</dd></div><div><dt>Status</dt><dd>{ride.status.replaceAll("_", " ")}</dd></div></dl>
-    {["requested", "accepted", "arrived"].includes(ride.status) && <button className="btn btn-secondary" disabled={busy} onClick={cancel}>{busy ? "Cancelling…" : "Cancel ride"}</button>}
-  </main>;
+  if (!ride && error) {
+    return (
+      <main className="page-panel tracking-page">
+        <p className="eyebrow orange-text">Tracking unavailable</p>
+        <h1>We could not load your ride</h1>
+        <p className="form-error" role="alert">{error}. We will retry when the connection is available.</p>
+        <Link className="text-link" to="/rider/dashboard">Back to dashboard</Link>
+      </main>
+    );
+  }
+  if (!ride) return <main className="page-panel tracking-page"><p className="empty-requests">No active ride was found.</p></main>;
+
+  const vehicle = ride.driverProfile;
+
+  return (
+    <main className="page-panel tracking-page">
+      <p className="eyebrow blue-text">Ride tracking</p>
+      <div className="tracking-title">
+        <h1>{ride.status.replaceAll("_", " ")}</h1>
+        <span className={`status-pill ${ride.status === "accepted" ? "status-confirmed" : "status-pending"}`}>
+          {ride.status === "accepted" ? "Driver assigned" : "Finding a driver"}
+        </span>
+      </div>
+      <p className="muted" role="status">
+        {ride.status === "requested" ? "Your request is visible to available drivers." : "Your driver has accepted the ride."}
+        {" "}Updates refresh automatically.
+      </p>
+      {error && <p className="form-error" role="alert">Live update failed: {error}. Retrying automatically.</p>}
+
+      <div className="tracking-grid">
+        <section className="tracking-block">
+          <h2>Your journey</h2>
+          <dl className="ride-details">
+            <div><dt>Pickup</dt><dd>{ride.pickup.address}</dd></div>
+            <div><dt>Destination</dt><dd>{ride.destination.address}</dd></div>
+            <div><dt>Distance</dt><dd>{Number(ride.distanceInKm).toFixed(1)} km</dd></div>
+            <div><dt>Estimated fare</dt><dd>NGN {Number(ride.estimatedFare).toLocaleString()}</dd></div>
+          </dl>
+        </section>
+        {ride.driverId ? (
+          <section className="tracking-block driver-assignment">
+            <p className="eyebrow green-text">Your driver</p>
+            <h2>{ride.driverId.fullName || "Driver assigned"}</h2>
+            {ride.driverId.phone && <a className="driver-phone" href={`tel:${ride.driverId.phone}`}>{ride.driverId.phone}</a>}
+            {vehicle && (
+              <dl className="ride-details vehicle-details">
+                <div><dt>Vehicle</dt><dd>{[vehicle.vehicleColor, vehicle.vehicleMake, vehicle.vehicleModel].filter(Boolean).join(" ")}</dd></div>
+                <div><dt>Plate</dt><dd>{vehicle.plateNumber}</dd></div>
+              </dl>
+            )}
+          </section>
+        ) : (
+          <section className="tracking-block waiting-driver">
+            <h2>Matching you with a driver</h2>
+            <p className="muted">Driver and vehicle details will appear here as soon as someone accepts.</p>
+          </section>
+        )}
+      </div>
+      <Link className="text-link" to="/rider/dashboard">Back to rider dashboard</Link>
+    </main>
+  );
 }

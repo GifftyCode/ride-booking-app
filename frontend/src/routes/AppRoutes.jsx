@@ -2,6 +2,7 @@ import { BrowserRouter, Link, Navigate, Route, Routes, useLocation } from "react
 import { useAuth } from "../context/AuthContext";
 import { AboutPage } from "../pages/AboutPage";
 import { DriverDashboardPage } from "../pages/DriverDashboardPage";
+import { DriverRidePage } from "../pages/DriverRidePage";
 import { HomePage } from "../pages/HomePage";
 import { LoginPage } from "../pages/LoginPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
@@ -92,10 +93,26 @@ export function AppRoutes() {
         />
         <Route path="/rider/rides/:rideId" element={<RiderRoute><RiderRidePage /></RiderRoute>} />
         <Route
+          path="/rider/rides/:rideId"
+          element={
+            <RiderRoute>
+              <RiderRidePage />
+            </RiderRoute>
+          }
+        />
+        <Route
           path="/driver/dashboard"
           element={
             <DriverRoute>
               <DriverDashboardPage />
+            </DriverRoute>
+          }
+        />
+        <Route
+          path="/driver/rides/:rideId"
+          element={
+            <DriverRoute>
+              <DriverRidePage />
             </DriverRoute>
           }
         />

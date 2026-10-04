@@ -19,6 +19,7 @@ const driverProfileSchema = new mongoose.Schema(
       trim: true,
     },
     isAvailable: { type: Boolean, default: false, index: true },
+    activeRideId: { type: mongoose.Schema.Types.ObjectId, ref: "Ride", default: null },
     currentLocation: {
       latitude: Number,
       longitude: Number,
@@ -26,5 +27,7 @@ const driverProfileSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+driverProfileSchema.index({ isAvailable: 1, activeRideId: 1 });
 
 module.exports = mongoose.model("DriverProfile", driverProfileSchema);
