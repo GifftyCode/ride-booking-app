@@ -8,6 +8,9 @@ function errorHandler(error, req, res, next) {
   if (res.headersSent) return next(error);
 
   if (error.code === 11000) {
+    if (error?.keyPattern?.riderId) {
+      return sendError(res, "You already have an active ride", 409);
+    }
     const field = Object.keys(error.keyPattern || error.keyValue || {})[0] || "field";
     return sendError(res, `${field} already exists`, 409);
   }

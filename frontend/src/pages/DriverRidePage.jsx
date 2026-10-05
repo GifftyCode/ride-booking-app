@@ -50,13 +50,37 @@ export function DriverRidePage() {
   if (loading) return <PageSkeleton variant="tracking" />;
   if (!ride) {
     return (
-      <main className="page-panel tracking-page">
-        <p className="eyebrow orange-text">Ride unavailable</p>
-        <p className="form-error" role="alert">{error || "This ride is no longer available."}</p>
-        <Link className="btn btn-secondary" to="/driver/dashboard">Back to dashboard</Link>
+      <main className="page-panel driver-loading">
+        Loading active ride...
       </main>
     );
   }
+
+  if (!ride) {
+    return (
+      <main className="page-panel tracking-page">
+        <p className="eyebrow orange-text">Ride unavailable</p>
+
+        <h1>We could not load this ride</h1>
+
+        <p className="form-error" role="alert">
+          {error || "This ride is no longer available."}
+        </p>
+
+        <Link
+          className="btn btn-secondary"
+          to="/driver/dashboard"
+        >
+          Back to dashboard
+        </Link>
+      </main>
+    );
+  }
+
+  const rider =
+    ride.riderId && typeof ride.riderId === "object"
+      ? ride.riderId
+      : null;
 
   return (
     <main className="page-panel tracking-page">
@@ -68,20 +92,63 @@ export function DriverRidePage() {
       <div className="tracking-grid">
         <section className="tracking-block">
           <h2>Journey</h2>
+
           <dl className="ride-details">
-            <div><dt>Pickup</dt><dd>{ride.pickup.address}</dd></div>
-            <div><dt>Destination</dt><dd>{ride.destination.address}</dd></div>
-            <div><dt>Distance</dt><dd>{Number(ride.distanceInKm).toFixed(1)} km</dd></div>
-            <div><dt>Estimated fare</dt><dd>NGN {Number(ride.estimatedFare).toLocaleString()}</dd></div>
+            <div>
+              <dt>Pickup</dt>
+              <dd>{ride.pickup?.address || "Not provided"}</dd>
+            </div>
+
+            <div>
+              <dt>Destination</dt>
+              <dd>{ride.destination?.address || "Not provided"}</dd>
+            </div>
+
+            <div>
+              <dt>Distance</dt>
+              <dd>
+                {Number.isFinite(Number(ride.distanceInKm))
+                  ? `${Number(ride.distanceInKm).toFixed(1)} km`
+                  : "Not available"}
+              </dd>
+            </div>
+
+            <div>
+              <dt>Estimated fare</dt>
+              <dd>
+                {Number.isFinite(Number(ride.estimatedFare))
+                  ? `NGN ${Number(
+                      ride.estimatedFare
+                    ).toLocaleString()}`
+                  : "Not available"}
+              </dd>
+            </div>
           </dl>
         </section>
+
         <section className="tracking-block">
           <h2>Rider</h2>
+
           <dl className="ride-details">
-            <div><dt>Name</dt><dd>{ride.riderId?.fullName || "Rider"}</dd></div>
-            <div><dt>Phone</dt><dd>{ride.riderId?.phone || "Not provided"}</dd></div>
+            <div>
+              <dt>Name</dt>
+              <dd>{rider?.fullName || "Rider"}</dd>
+            </div>
+
+            <div>
+              <dt>Phone</dt>
+              <dd>{rider?.phone || "Not provided"}</dd>
+            </div>
           </dl>
-          {ride.riderId?.phone && <a className="btn btn-primary" href={`tel:${ride.riderId.phone}`}>Call rider</a>}
+
+          {rider?.phone && (
+            <a
+              className="btn btn-secondary"
+              href={`tel:${rider.phone}`}
+            >
+              Call rider
+            </a>
+          )}
         </section>
       </div>
       <div className="trip-actions">

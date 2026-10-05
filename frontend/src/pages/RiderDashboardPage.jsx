@@ -4,133 +4,143 @@ import { Button } from "../components/Button";
 import { Input } from "../components/Input";
 import { PageSkeleton } from "../components/Skeleton";
 import { useAuth } from "../context/AuthContext";
-import { getCurrentRiderRide, requestRide } from "../services/rides.service";
+import {
+  estimateRide,
+  getCurrentRide,
+  requestRide,
+} from "../services/rides.service";
+import { getApiError } from "../services/api";
+import { formatCurrency } from "../utils/formatCurrency";
 
 const emptyLocation = { address: "", latitude: "", longitude: "" };
-const emptyForm = { pickup: { ...emptyLocation }, destination: { ...emptyLocation } };
+const emptyForm = {
+  pickup: { ...emptyLocation },
+  destination: { ...emptyLocation },
+};
 
 function formatStatus(status) {
-  return status.split("_").map((word) => word[0].toUpperCase() + word.slice(1)).join(" ");
+  return status
+    .split("_")
+    .map((word) => word[0].toUpperCase() + word.slice(1))
+    .join(" ");
 }
 
 function calculateDistanceInKm(start, end) {
   const radians = (degrees) => degrees * (Math.PI / 180);
   const latitudeDelta = radians(end.latitude - start.latitude);
   const longitudeDelta = radians(end.longitude - start.longitude);
-  const value = Math.sin(latitudeDelta / 2) ** 2 +
-    Math.cos(radians(start.latitude)) * Math.cos(radians(end.latitude)) *
-    Math.sin(longitudeDelta / 2) ** 2;
-  return Math.max(0.1, 6371 * 2 * Math.atan2(Math.sqrt(value), Math.sqrt(1 - value)));
+  const value =
+    Math.sin(latitudeDelta / 2) ** 2 +
+    Math.cos(radians(start.latitude)) *
+      Math.cos(radians(end.latitude)) *
+      Math.sin(longitudeDelta / 2) ** 2;
+  return Math.max(
+    0.1,
+    6371 * 2 * Math.atan2(Math.sqrt(value), Math.sqrt(1 - value)),
+  );
 }
 
 export function RiderDashboardPage() {
-  const { user, getApiError } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState(initialForm);
+  const [estimate, setEstimate] = useState(null);
   const [activeRide, setActiveRide] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [estimating, setEstimating] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [locationBusy, setLocationBusy] = useState(false);
   const [error, setError] = useState("");
   const pickupLatitude = Number(form.pickup.latitude);
   const pickupLongitude = Number(form.pickup.longitude);
   const destinationLatitude = Number(form.destination.latitude);
   const destinationLongitude = Number(form.destination.longitude);
-  const hasRoute = [pickupLatitude, pickupLongitude, destinationLatitude, destinationLongitude].every(Number.isFinite)
-    && form.pickup.address.trim() && form.destination.address.trim();
+  const hasRoute =
+    [
+      pickupLatitude,
+      pickupLongitude,
+      destinationLatitude,
+      destinationLongitude,
+    ].every(Number.isFinite) &&
+    form.pickup.address.trim() &&
+    form.destination.address.trim();
   const estimatedDistance = hasRoute
-    ? calculateDistanceInKm({ latitude: pickupLatitude, longitude: pickupLongitude }, { latitude: destinationLatitude, longitude: destinationLongitude })
+    ? calculateDistanceInKm(
+        { latitude: pickupLatitude, longitude: pickupLongitude },
+        { latitude: destinationLatitude, longitude: destinationLongitude },
+      )
     : null;
-  const estimatedFare = estimatedDistance ? 1000 + (estimatedDistance * 500) : null;
+  const estimatedFare = estimatedDistance
+    ? 1000 + estimatedDistance * 500
+    : null;
 
   useEffect(() => {
-    let mounted = true;
-    getCurrentRiderRide()
-      .then((ride) => { if (mounted) setActiveRide(ride); })
-      .catch((requestError) => { if (mounted) setError(getApiError(requestError)); })
-      .finally(() => { if (mounted) setLoading(false); });
-    return () => { mounted = false; };
-  }, [getApiError]);
+    getCurrentRide()
+      .then(({ ride }) => setActiveRide(ride))
+      .catch((e) => setError(getApiError(e)))
+      .finally(() => setLoading(false));
+  }, []);
 
-  function updateLocation(place, field, value) {
+  function update(field, key, value) {
     setForm((current) => ({
       ...current,
-      [place]: { ...current[place], [field]: value },
+      [field]: { ...current[field], [key]: value },
     }));
+    setEstimate(null);
   }
 
-  function useCurrentLocation() {
-    if (!navigator.geolocation) {
-      setError("Location is not available in this browser.");
-      return;
+  function validate() {
+    for (const [label, place] of [
+      ["Pickup", form.pickup],
+      ["Destination", form.destination],
+    ]) {
+      if (!place.address.trim()) return `${label} address is required.`;
+      const lat = Number(place.latitude);
+      const lng = Number(place.longitude);
+      if (
+        !place.latitude ||
+        !place.longitude ||
+        !Number.isFinite(lat) ||
+        lat < -90 ||
+        lat > 90 ||
+        !Number.isFinite(lng) ||
+        lng < -180 ||
+        lng > 180
+      )
+        return `${label} coordinates must be valid latitude and longitude values.`;
     }
-    setLocationBusy(true);
-    setError("");
-    navigator.geolocation.getCurrentPosition(
-      ({ coords }) => {
-        setForm((current) => ({
-          ...current,
-          pickup: {
-            ...current.pickup,
-            address: current.pickup.address || "Current location",
-            latitude: String(coords.latitude),
-            longitude: String(coords.longitude),
-          },
-        }));
-        setLocationBusy(false);
-      },
-      (locationError) => {
-        setError(locationError.message || "Unable to access your location.");
-        setLocationBusy(false);
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
-  }
-
-  function validateForm() {
-    for (const [label, location] of [["Pickup", form.pickup], ["Destination", form.destination]]) {
-      const latitude = Number(location.latitude);
-      const longitude = Number(location.longitude);
-      if (!location.address.trim()) return `${label} address is required.`;
-      if (!location.latitude || !location.longitude || !Number.isFinite(latitude) || latitude < -90 || latitude > 90 || !Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
-        return `Enter valid coordinates for ${label.toLowerCase()}.`;
-      }
-    }
+    if (
+      Number(form.pickup.latitude) === Number(form.destination.latitude) &&
+      Number(form.pickup.longitude) === Number(form.destination.longitude)
+    )
+      return "Pickup and destination must be different.";
     return "";
   }
 
-  async function submitRide(event) {
-    event.preventDefault();
-    const validationError = validateForm();
-    if (validationError) {
-      setError(validationError);
+  async function calculate() {
+    const validation = validate();
+    if (validation) {
+      setError(validation);
       return;
     }
-
-    setSubmitting(true);
     setError("");
-    const pickup = {
-      ...form.pickup,
-      latitude: Number(form.pickup.latitude),
-      longitude: Number(form.pickup.longitude),
-    };
-    const destination = {
-      ...form.destination,
-      latitude: Number(form.destination.latitude),
-      longitude: Number(form.destination.longitude),
-    };
-
+    setEstimating(true);
     try {
-      const result = await requestRide({
-        pickup,
-        destination,
-        distanceInKm: calculateDistanceInKm(pickup, destination),
-      });
-      navigate(`/rider/rides/${result.ride._id}`);
-    } catch (requestError) {
-      setError(getApiError(requestError));
+      const payload = Object.fromEntries(
+        Object.entries(form).map(([key, p]) => [
+          key,
+          {
+            ...p,
+            latitude: Number(p.latitude),
+            longitude: Number(p.longitude),
+          },
+        ]),
+      );
+      const result = await estimateRide(payload);
+      setEstimate(result.data || result);
+    } catch (e) {
+      setError(getApiError(e));
     } finally {
-      setSubmitting(false);
+      setEstimating(false);
     }
   }
 
@@ -145,21 +155,36 @@ export function RiderDashboardPage() {
           <div className="active-ride-notice">
             <div>
               <strong>Your ride is {formatStatus(activeRide.status)}.</strong>
-              <span>Open tracking to see the latest ride and driver details.</span>
+              <span>
+                Open tracking to see the latest ride and driver details.
+              </span>
             </div>
-            <Link className="btn btn-primary" to={`/rider/rides/${activeRide._id}`}>Continue tracking</Link>
+            <Link
+              className="btn btn-primary"
+              to={`/rider/rides/${activeRide._id}`}
+            >
+              Continue tracking
+            </Link>
           </div>
         ) : (
           <>
-            <p className="muted">Add a pickup and destination to preview your route before requesting a driver.</p>
+            <p className="muted">
+              Add a pickup and destination to preview your route before
+              requesting a driver.
+            </p>
             <form className="stack" onSubmit={submitRide}>
-              {[["pickup", "Pickup"], ["destination", "Destination"]].map(([key, label]) => (
+              {[
+                ["pickup", "Pickup"],
+                ["destination", "Destination"],
+              ].map(([key, label]) => (
                 <fieldset className="location-fields" key={key}>
                   <legend>{label}</legend>
                   <Input
                     label={`${label} address`}
                     value={form[key].address}
-                    onChange={(event) => updateLocation(key, "address", event.target.value)}
+                    onChange={(event) =>
+                      updateLocation(key, "address", event.target.value)
+                    }
                     required
                   />
                   <div className="coordinate-grid">
@@ -170,7 +195,9 @@ export function RiderDashboardPage() {
                       min="-90"
                       max="90"
                       value={form[key].latitude}
-                      onChange={(event) => updateLocation(key, "latitude", event.target.value)}
+                      onChange={(event) =>
+                        updateLocation(key, "latitude", event.target.value)
+                      }
                       required
                     />
                     <Input
@@ -180,13 +207,22 @@ export function RiderDashboardPage() {
                       min="-180"
                       max="180"
                       value={form[key].longitude}
-                      onChange={(event) => updateLocation(key, "longitude", event.target.value)}
+                      onChange={(event) =>
+                        updateLocation(key, "longitude", event.target.value)
+                      }
                       required
                     />
                   </div>
                   {key === "pickup" && (
-                    <Button type="button" variant="secondary" disabled={locationBusy} onClick={useCurrentLocation}>
-                      {locationBusy ? "Finding location..." : "Use current location"}
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={locationBusy}
+                      onClick={useCurrentLocation}
+                    >
+                      {locationBusy
+                        ? "Finding location..."
+                        : "Use current location"}
                     </Button>
                   )}
                 </fieldset>
@@ -194,25 +230,55 @@ export function RiderDashboardPage() {
               <aside className="fare-preview" aria-live="polite">
                 <div>
                   <span>Estimated Fare</span>
-                  <strong>{estimatedFare ? `NGN ${Math.round(estimatedFare).toLocaleString()}` : "Add Route Details"}</strong>
+                  <strong>
+                    {estimatedFare
+                      ? `NGN ${Math.round(estimatedFare).toLocaleString()}`
+                      : "Add Route Details"}
+                  </strong>
                 </div>
-                <small>{estimatedDistance ? `${estimatedDistance.toFixed(1)} km · Demo fare: NGN 1,000 base + NGN 500/km` : "Your estimated distance and fare will appear here."}</small>
+                <small>
+                  {estimatedDistance
+                    ? `${estimatedDistance.toFixed(1)} km · Demo fare: NGN 1,000 base + NGN 500/km`
+                    : "Your estimated distance and fare will appear here."}
+                </small>
               </aside>
-              {error && <p className="form-error" role="alert">{error}</p>}
-              <Button type="submit" disabled={submitting}>{submitting ? "Requesting ride..." : "Request ride"}</Button>
+              {error && (
+                <p className="form-error" role="alert">
+                  {error}
+                </p>
+              )}
+              <Button type="submit" disabled={submitting}>
+                {submitting ? "Requesting ride..." : "Request ride"}
+              </Button>
             </form>
           </>
         )}
       </section>
       <aside className="page-panel rider-booking-aside">
-        <img className="booking-aside-image" src="/assets/booking-phone.webp" alt="Rider confirming a trip on a phone" />
+        <img
+          className="booking-aside-image"
+          src="/assets/booking-phone.webp"
+          alt="Rider confirming a trip on a phone"
+        />
         <p className="eyebrow green-text">Your Ride</p>
         <h2>From request to destination</h2>
-        <p className="muted">Your request is shared with available drivers. When a driver accepts, their contact and vehicle details appear in live tracking.</p>
+        <p className="muted">
+          Your request is shared with available drivers. When a driver accepts,
+          their contact and vehicle details appear in live tracking.
+        </p>
         <ol className="booking-steps">
-          <li><strong>1. Request</strong><span>Share your pickup and destination.</span></li>
-          <li><strong>2. Match</strong><span>Follow the driver assignment in real time.</span></li>
-          <li><strong>3. Ride</strong><span>Track arrival, trip start, and completion.</span></li>
+          <li>
+            <strong>1. Request</strong>
+            <span>Share your pickup and destination.</span>
+          </li>
+          <li>
+            <strong>2. Match</strong>
+            <span>Follow the driver assignment in real time.</span>
+          </li>
+          <li>
+            <strong>3. Ride</strong>
+            <span>Track arrival, trip start, and completion.</span>
+          </li>
         </ol>
       </aside>
     </main>

@@ -8,7 +8,10 @@ const PORT = process.env.PORT || 5000;
 function validateEnvironment() {
   const required = ["MONGO_URI", "JWT_SECRET"];
   const missing = required.filter((name) => !process.env[name]);
-  if (missing.length) throw new Error(`Missing required environment variables: ${missing.join(", ")}`);
+  if (missing.length)
+    throw new Error(
+      `Missing required environment variables: ${missing.join(", ")}`,
+    );
   if (process.env.NODE_ENV === "production" && !process.env.CLIENT_URL) {
     throw new Error("CLIENT_URL is required in production");
   }
@@ -26,7 +29,9 @@ const startServer = async () => {
     server.on("error", async (error) => {
       if (error.code === "EADDRINUSE") {
         console.error(`Port ${PORT} is already in use.`);
-        console.error(`Stop the process using port ${PORT} or set PORT to another value in backend/.env.`);
+        console.error(
+          `Stop the process using port ${PORT} or set PORT to another value in backend/.env.`,
+        );
       } else {
         console.error("Server error:", error.message);
       }

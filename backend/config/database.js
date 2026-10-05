@@ -20,6 +20,7 @@ async function connectDatabase() {
   await mongoose.connect(process.env.MONGO_URI, {
     dbName: "ride_booking_app",
     serverSelectionTimeoutMS: 10000,
+    family: 4,
   });
 }
 

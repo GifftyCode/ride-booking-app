@@ -55,6 +55,7 @@ function createApp() {
   );
   app.use(express.json({ limit: "100kb" }));
   app.use(requestLogger);
+  if (process.env.NODE_ENV !== "development") {
   app.use(
     rateLimit({
       windowMs: 15 * 60 * 1000,
@@ -63,6 +64,7 @@ function createApp() {
       legacyHeaders: false,
     })
   );
+}
 
   app.get("/api/health", (req, res) => {
     return sendSuccess(res, "API is healthy", {

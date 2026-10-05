@@ -102,6 +102,7 @@ export function AppRoutes() {
             </RiderRoute>
           }
         />
+        <Route path="/rider/rides/:rideId" element={<RiderRoute><RiderRidePage /></RiderRoute>} />
         <Route
           path="/rider/rides/:rideId"
           element={
