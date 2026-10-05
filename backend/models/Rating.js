@@ -11,4 +11,6 @@ const ratingSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+ratingSchema.index({ ride: 1, from: 1 }, { unique: true });
+
 module.exports = mongoose.model("Rating", ratingSchema);

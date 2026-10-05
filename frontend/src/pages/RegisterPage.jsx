@@ -25,6 +25,7 @@ export function RegisterPage() {
 
   if (user?.role === "rider") return <Navigate to="/rider/dashboard" replace />;
   if (user?.role === "driver") return <Navigate to="/driver/dashboard" replace />;
+  if (user?.role === "admin") return <Navigate to="/admin/dashboard" replace />;
 
   const update = (event) => setForm({ ...form, [event.target.name]: event.target.value });
 

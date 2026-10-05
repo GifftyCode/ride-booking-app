@@ -10,7 +10,7 @@ export function DriverPage() {
       <p className="muted">Go online, receive ride requests, and update every trip status.</p>
       <div className="metric-row">
         <span>Today</span>
-        <strong>₦0 earned</strong>
+        <strong>NGN 0 Earned</strong>
       </div>
       <Button type="button" variant="success">Go online</Button>
     </Card>

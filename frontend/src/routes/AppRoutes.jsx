@@ -1,6 +1,9 @@
 import { BrowserRouter, Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { AboutPage } from "../pages/AboutPage";
+import { AdminPage } from "../pages/AdminPage";
+import { AdminOnboardingPage } from "../pages/AdminOnboardingPage";
+import { PageSkeleton } from "../components/Skeleton";
 import { DriverDashboardPage } from "../pages/DriverDashboardPage";
 import { DriverRidePage } from "../pages/DriverRidePage";
 import { HomePage } from "../pages/HomePage";
@@ -9,6 +12,7 @@ import { NotFoundPage } from "../pages/NotFoundPage";
 import { RegisterPage } from "../pages/RegisterPage";
 import { RiderDashboardPage } from "../pages/RiderDashboardPage";
 import { RiderRidePage } from "../pages/RiderRidePage";
+import { RideHistoryPage } from "../pages/RideHistoryPage";
 import { UnauthorizedPage } from "../pages/UnauthorizedPage";
 
 function Navigation() {
@@ -21,8 +25,9 @@ function Navigation() {
       </Link>
       <nav>
         <Link to="/about">About</Link>
-        {user?.role === "rider" && <Link to="/rider/dashboard">Rider Dashboard</Link>}
-        {user?.role === "driver" && <Link to="/driver/dashboard">Driver Dashboard</Link>}
+        {user?.role === "rider" && <><Link to="/rider/dashboard">Rider Dashboard</Link><Link to="/rider/history">History</Link></>}
+        {user?.role === "driver" && <><Link to="/driver/dashboard">Driver Dashboard</Link><Link to="/driver/history">History</Link></>}
+        {user?.role === "admin" && <Link to="/admin/dashboard">Admin Dashboard</Link>}
         {!user ? (
           <>
             <Link to="/login">Login</Link>
@@ -55,7 +60,7 @@ function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
   const location = useLocation();
 
-  if (loading) return <main className="page-panel">Loading session...</main>;
+  if (loading) return <PageSkeleton variant="session" />;
   if (!user) return <Navigate to="/login" replace state={{ from: location }} />;
   return children;
 }
@@ -74,6 +79,10 @@ export function DriverRoute({ children }) {
   return <RoleRoute role="driver">{children}</RoleRoute>;
 }
 
+export function AdminRoute({ children }) {
+  return <RoleRoute role="admin">{children}</RoleRoute>;
+}
+
 export function AppRoutes() {
   return (
     <AppLayout>
@@ -82,7 +91,9 @@ export function AppRoutes() {
         <Route path="/about" element={<AboutPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/admin/onboarding" element={<AdminOnboardingPage />} />
         <Route path="/unauthorized" element={<UnauthorizedPage />} />
+        <Route path="/admin/dashboard" element={<AdminRoute><AdminPage /></AdminRoute>} />
         <Route
           path="/rider/dashboard"
           element={
@@ -100,6 +111,7 @@ export function AppRoutes() {
             </RiderRoute>
           }
         />
+        <Route path="/rider/history" element={<RiderRoute><RideHistoryPage role="rider" /></RiderRoute>} />
         <Route
           path="/driver/dashboard"
           element={
@@ -116,6 +128,7 @@ export function AppRoutes() {
             </DriverRoute>
           }
         />
+        <Route path="/driver/history" element={<DriverRoute><RideHistoryPage role="driver" /></DriverRoute>} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </AppLayout>

@@ -21,6 +21,14 @@ const driver = {
   role: "driver",
 };
 
+const admin = {
+  fullName: "Development Administrator",
+  email: "admin.dev@example.com",
+  phone: "+15550000003",
+  password: "Oluwakemi@2",
+  role: "admin",
+};
+
 async function upsertUser(seedUser) {
   const existing = await User.findOne({ email: seedUser.email });
   if (existing) return existing;
@@ -36,6 +44,7 @@ async function seed() {
 
   const riderUser = await upsertUser(rider);
   const driverUser = await upsertUser(driver);
+  const adminUser = await upsertUser(admin);
 
   await DriverProfile.updateOne(
     { userId: driverUser._id },
@@ -53,13 +62,16 @@ async function seed() {
         },
       },
     },
-    { upsert: true }
+    { upsert: true },
   );
 
   console.log("Development-only seed completed.");
   console.log("Rider: rider.dev@example.com / DevPassword123!");
   console.log("Driver: driver.dev@example.com / DevPassword123!");
-  console.log(`Seeded user ids: ${riderUser._id}, ${driverUser._id}`);
+  console.log("Admin: admin.dev@example.com / DevPassword123!");
+  console.log(
+    `Seeded user ids: ${riderUser._id}, ${driverUser._id}, ${adminUser._id}`,
+  );
 
   await closeDatabase("seed completion");
 }

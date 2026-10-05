@@ -2,12 +2,13 @@ import { Link } from "react-router-dom";
 
 export function NotFoundPage() {
   return (
-    <main className="page-panel">
-      <p className="eyebrow orange-text">404</p>
-      <h1>Page not found</h1>
-      <p className="muted">The route you opened does not exist.</p>
+    <main className="page-panel not-found-page">
+      <div className="not-found-sign" aria-hidden="true"><span>404</span><i /></div>
+      <p className="eyebrow orange-text">Route Not Found</p>
+      <h1>This trip took a wrong turn</h1>
+      <p className="muted">The page you requested does not exist, may have moved, or needs a different account role.</p>
       <Link className="btn btn-primary" to="/">
-        Go home
+        Return Home
       </Link>
     </main>
   );

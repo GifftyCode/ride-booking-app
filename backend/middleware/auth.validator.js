@@ -10,11 +10,11 @@ function handleValidation(req, res, next) {
 
 const registerRules = [
   body("fullName").custom((value, { req }) => {
-    if (!value && !req.body.name) throw new Error("Full name is required");
+    if (!(value || req.body.name)?.trim()) throw new Error("Full name is required");
     return true;
   }),
   body("email").isEmail().withMessage("A valid email is required").normalizeEmail(),
-  body("phone").trim().notEmpty().withMessage("Phone is required"),
+  body("phone").trim().matches(/^\+?[0-9][0-9\s-]{6,19}$/).withMessage("A valid phone number is required"),
   body("password")
     .isLength({ min: 8 })
     .withMessage("Password must be at least 8 characters long"),
@@ -48,4 +48,17 @@ const loginRules = [
   handleValidation,
 ];
 
-module.exports = { registerRules, loginRules };
+const createAdminInvitationRules = [
+  body("email").isEmail().withMessage("A valid email is required").normalizeEmail(),
+  handleValidation,
+];
+
+const acceptAdminInvitationRules = [
+  body("token").isString().notEmpty().withMessage("A valid invitation token is required"),
+  body("fullName").trim().notEmpty().withMessage("Full name is required"),
+  body("phone").trim().matches(/^\+?[0-9][0-9\s-]{6,19}$/).withMessage("A valid phone number is required"),
+  body("password").isLength({ min: 8 }).withMessage("Password must be at least 8 characters long"),
+  handleValidation,
+];
+
+module.exports = { registerRules, loginRules, createAdminInvitationRules, acceptAdminInvitationRules };

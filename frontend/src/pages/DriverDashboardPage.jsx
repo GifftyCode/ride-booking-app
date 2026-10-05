@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../components/Button";
 import { Input } from "../components/Input";
+import { PageSkeleton } from "../components/Skeleton";
 import { useAuth } from "../context/AuthContext";
 import {
   getCurrentDriverRide,
@@ -14,6 +15,7 @@ import { acceptRide, getAvailableRides } from "../services/rides.service";
 
 const VEHICLE_FIELDS = ["vehicleMake", "vehicleModel", "vehicleColor", "plateNumber"];
 const EMPTY_VEHICLE = { vehicleMake: "", vehicleModel: "", vehicleColor: "", plateNumber: "" };
+const formatStatus = (status) => status.split("_").map((word) => word[0].toUpperCase() + word.slice(1)).join(" ");
 
 export function DriverDashboardPage() {
   const { user, getApiError } = useAuth();
@@ -35,17 +37,19 @@ export function DriverDashboardPage() {
 
     async function loadDashboard() {
       try {
-        const [driverProfile, activeRide] = await Promise.all([
-          getDriverProfile(),
-          getCurrentDriverRide(),
-        ]);
+        const driverProfile = await getDriverProfile();
         if (!mounted) return;
         setProfile(driverProfile);
         setVehicle(Object.fromEntries(VEHICLE_FIELDS.map((field) => [field, driverProfile[field] || ""])));
-        setCurrentRide(activeRide);
 
-      } catch (loadError) {
-        if (mounted) setError(getApiError(loadError));
+        try {
+          const activeRide = await getCurrentDriverRide();
+          if (mounted) setCurrentRide(activeRide);
+        } catch (rideError) {
+          if (mounted) setError(getApiError(rideError));
+        }
+      } catch (profileError) {
+        if (mounted) setError(getApiError(profileError));
       } finally {
         if (mounted) setLoading(false);
       }
@@ -204,30 +208,56 @@ export function DriverDashboardPage() {
     }
   }
 
-  if (loading) return <main className="page-panel driver-loading">Loading driver dashboard...</main>;
+  if (loading) return <PageSkeleton />;
 
   return (
-    <main className="dashboard-grid">
+    <main className="dashboard-grid driver-dashboard-layout">
       <section className="page-panel dashboard-hero driver-panel">
         <p className="eyebrow green-text">Driver dashboard</p>
-        <h1>Welcome, {user?.fullName}</h1>
-        <p className="muted">Manage your vehicle and respond to nearby ride requests.</p>
-        <div className="driver-toolbar">
+        <div className="driver-hero-heading">
+          <div>
+            <h1>Ready when the city moves, {user?.fullName?.split(" ")[0]}.</h1>
+            <p className="muted">Keep your vehicle ready, set your availability, and take the next trip with confidence.</p>
+          </div>
+          <span className={profile?.isAvailable ? "shift-badge is-live" : "shift-badge"}>{profile?.isAvailable ? "● Live shift" : "○ Shift paused"}</span>
+        </div>
+        {error && <p className="form-error" role="alert">{error}</p>}
+        <div className="driver-overview" aria-label="Driver shift summary">
+          <div>
+            <span>Shift status</span>
+            <strong className={profile?.isAvailable ? "online-text" : "offline-text"}>{profile?.isAvailable ? "Ready for trips" : "Offline"}</strong>
+          </div>
+          <div>
+            <span>Nearby requests</span>
+            <strong>{profile?.isAvailable && !currentRide ? pagination.total : "—"}</strong>
+          </div>
+          <div>
+            <span>Current trip</span>
+            <strong>{currentRide ? formatStatus(currentRide.status) : "None active"}</strong>
+          </div>
+        </div>
+        <div className="driver-toolbar" aria-label="Shift controls">
           <div className="driver-toggle">
             <span>Availability</span>
             <strong className={profile?.isAvailable ? "online-text" : "offline-text"}>
               {profile?.isAvailable ? "Online" : "Offline"}
             </strong>
           </div>
-          <Button variant={profile?.isAvailable ? "secondary" : "primary"} disabled={busy} onClick={handleAvailabilityChange}>
+          <Button
+            type="button"
+            variant={profile?.isAvailable ? "secondary" : "primary"}
+            disabled={busy || !profile}
+            onClick={handleAvailabilityChange}
+          >
             {profile?.isAvailable ? "Go offline" : "Go online"}
           </Button>
-          <Button variant="secondary" disabled={busy} onClick={handleLocationUpdate}>
+          <Button type="button" variant="secondary" disabled={busy || !profile} onClick={handleLocationUpdate}>
             Update location
           </Button>
         </div>
       </section>
 
+      <div className="driver-workspace">
       <section className="page-panel driver-section">
         <div className="section-heading">
           <div>
@@ -235,6 +265,11 @@ export function DriverDashboardPage() {
             <h2>Your vehicle</h2>
           </div>
           <span className="driver-plate">{profile?.plateNumber || "No plate"}</span>
+        </div>
+        <div className="vehicle-summary">
+          <span>Registered vehicle</span>
+          <strong>{[profile?.vehicleColor, profile?.vehicleMake, profile?.vehicleModel].filter(Boolean).join(" ") || "Vehicle details needed"}</strong>
+          <small>Keep these details accurate so riders can identify you at pickup.</small>
         </div>
         <form className="driver-vehicle-form" onSubmit={handleSaveVehicle}>
           <div className="vehicle-grid">
@@ -261,12 +296,11 @@ export function DriverDashboardPage() {
           {profile?.isAvailable && !currentRide && <span className="request-count">{pagination.total} waiting</span>}
         </div>
 
-        {error && <p className="form-error" role="alert">{error}</p>}
         {message && <p className="form-success" role="status">{message}</p>}
 
         {currentRide ? (
           <article className="ride-request current-ride">
-            <div className="request-status">{currentRide.status.replaceAll("_", " ")}</div>
+            <div className="request-status">{formatStatus(currentRide.status)}</div>
             <div className="route-points">
               <p><span>Pickup</span><strong>{currentRide.pickup.address}</strong></p>
               <p><span>Drop-off</span><strong>{currentRide.destination.address}</strong></p>
@@ -317,6 +351,7 @@ export function DriverDashboardPage() {
           </div>
         )}
       </section>
+      </div>
     </main>
   );
 }

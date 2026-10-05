@@ -7,6 +7,7 @@ const authRoutes = require("../routes/auth.routes");
 const driverRoutes = require("../routes/driver.routes");
 const rideRoutes = require("../routes/ride.routes");
 const ratingRoutes = require("../routes/rating.routes");
+const adminRoutes = require("../routes/admin.routes");
 const { getDatabaseStatus } = require("./database");
 const { sendSuccess } = require("../services/apiResponse");
 const { notFoundHandler, errorHandler } = require("../middleware/error.middleware");
@@ -24,7 +25,9 @@ function getAllowedOrigins() {
     .map((origin) => origin.trim())
     .filter(Boolean);
 
-  return [...new Set([...defaultAllowedOrigins, ...configuredOrigins])];
+  return process.env.NODE_ENV === "production"
+    ? configuredOrigins
+    : [...new Set([...defaultAllowedOrigins, ...configuredOrigins])];
 }
 
 function requestLogger(req, res, next) {
@@ -50,7 +53,7 @@ function createApp() {
       allowedHeaders: ["Content-Type", "Authorization"],
     })
   );
-  app.use(express.json());
+  app.use(express.json({ limit: "100kb" }));
   app.use(requestLogger);
   if (process.env.NODE_ENV !== "development") {
   app.use(
@@ -76,6 +79,7 @@ function createApp() {
   app.use("/api/drivers", driverRoutes);
   app.use("/api/rides", rideRoutes);
   app.use("/api/ratings", ratingRoutes);
+  app.use("/api/admin", adminRoutes);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
