@@ -44,7 +44,6 @@ const rideSchema = new mongoose.Schema(
 
 rideSchema.index({ riderId: 1, status: 1 });
 rideSchema.index({ driverId: 1, status: 1 });
-// Enforce the active-ride rule even when two requests arrive at the same time.
 rideSchema.index(
   { riderId: 1 },
   {
@@ -56,7 +55,6 @@ rideSchema.index(
   }
 );
 
-// Helps drivers efficiently fetch available ride requests.
 rideSchema.index({ status: 1, driverId: 1, requestedAt: 1 });
 
 module.exports = mongoose.model("Ride", rideSchema);

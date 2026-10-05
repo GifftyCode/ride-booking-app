@@ -1,5 +1,4 @@
 function notifyRideRequested({ ride, drivers = [] }) {
-  // TODO: emit ride:request to nearby driver sockets or push notification provider.
   return {
     rideId: ride._id,
     recipientCount: drivers.length,
@@ -8,7 +7,6 @@ function notifyRideRequested({ ride, drivers = [] }) {
 }
 
 function notifyRideStatusChanged({ ride }) {
-  // TODO: centralize status-change notifications for rider, driver, and admin.
   return {
     rideId: ride._id,
     status: ride.status,

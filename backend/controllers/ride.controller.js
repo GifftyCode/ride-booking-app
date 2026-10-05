@@ -43,8 +43,6 @@ function createHttpError(message, status = 400) {
   return error;
 }
 
-// Transactions require a replica set. Local standalone MongoDB installations
-// remain supported by falling back to the same guarded operations.
 async function runWithTransaction(work) {
   const session = await Ride.startSession();
   try {

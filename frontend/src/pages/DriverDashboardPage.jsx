@@ -42,8 +42,6 @@ export function DriverDashboardPage() {
         setProfile(driverProfile);
         setVehicle(Object.fromEntries(VEHICLE_FIELDS.map((field) => [field, driverProfile[field] || ""])));
 
-        // A failed current-ride lookup must not make the driver's vehicle
-        // profile or availability controls unusable.
         try {
           const activeRide = await getCurrentDriverRide();
           if (mounted) setCurrentRide(activeRide);

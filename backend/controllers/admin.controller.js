@@ -115,8 +115,6 @@ async function getActiveAdminInvitations(req, res, next) {
       try {
         token = decryptInvitationToken(invitation.tokenCiphertext);
       } catch {
-        // Invitations created before encrypted token storage (or after a key rotation)
-        // cannot be safely recovered. Rotate the token so this active invitation stays usable.
         token = createInvitationToken();
         invitation.tokenHash = hashInvitationToken(token);
         invitation.tokenCiphertext = encryptInvitationToken(token);

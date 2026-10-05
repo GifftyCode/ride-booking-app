@@ -5,12 +5,10 @@ import { Input } from "../components/Input";
 import { PageSkeleton } from "../components/Skeleton";
 import { useAuth } from "../context/AuthContext";
 import {
-  estimateRide,
   getCurrentRide,
   requestRide,
 } from "../services/rides.service";
 import { getApiError } from "../services/api";
-import { formatCurrency } from "../utils/formatCurrency";
 
 const emptyLocation = { address: "", latitude: "", longitude: "" };
 const emptyForm = {
@@ -43,11 +41,10 @@ function calculateDistanceInKm(start, end) {
 export function RiderDashboardPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [form, setForm] = useState(initialForm);
-  const [estimate, setEstimate] = useState(null);
+  const [form, setForm] = useState(emptyForm);
   const [activeRide, setActiveRide] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [estimating, setEstimating] = useState(false);
+  const [locationBusy, setLocationBusy] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const pickupLatitude = Number(form.pickup.latitude);
@@ -80,12 +77,39 @@ export function RiderDashboardPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  function update(field, key, value) {
+  function updateLocation(field, key, value) {
     setForm((current) => ({
       ...current,
       [field]: { ...current[field], [key]: value },
     }));
-    setEstimate(null);
+  }
+
+  function useCurrentLocation() {
+    if (!navigator.geolocation) {
+      setError("Location is not available in this browser.");
+      return;
+    }
+
+    setLocationBusy(true);
+    setError("");
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        setForm((current) => ({
+          ...current,
+          pickup: {
+            ...current.pickup,
+            latitude: String(coords.latitude),
+            longitude: String(coords.longitude),
+          },
+        }));
+        setLocationBusy(false);
+      },
+      (locationError) => {
+        setError(locationError.message || "Unable to access your location.");
+        setLocationBusy(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
   }
 
   function validate() {
@@ -116,31 +140,34 @@ export function RiderDashboardPage() {
     return "";
   }
 
-  async function calculate() {
-    const validation = validate();
-    if (validation) {
-      setError(validation);
+  async function submitRide(event) {
+    event.preventDefault();
+    const validationError = validate();
+    if (validationError) {
+      setError(validationError);
       return;
     }
+
+    setSubmitting(true);
     setError("");
-    setEstimating(true);
     try {
-      const payload = Object.fromEntries(
-        Object.entries(form).map(([key, p]) => [
-          key,
-          {
-            ...p,
-            latitude: Number(p.latitude),
-            longitude: Number(p.longitude),
-          },
-        ]),
-      );
-      const result = await estimateRide(payload);
-      setEstimate(result.data || result);
-    } catch (e) {
-      setError(getApiError(e));
+      const rideData = await requestRide({
+        pickup: {
+          ...form.pickup,
+          latitude: Number(form.pickup.latitude),
+          longitude: Number(form.pickup.longitude),
+        },
+        destination: {
+          ...form.destination,
+          latitude: Number(form.destination.latitude),
+          longitude: Number(form.destination.longitude),
+        },
+      });
+      navigate(`/rider/rides/${rideData.ride._id}`);
+    } catch (requestError) {
+      setError(getApiError(requestError));
     } finally {
-      setEstimating(false);
+      setSubmitting(false);
     }
   }
 

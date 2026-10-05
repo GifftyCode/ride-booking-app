@@ -28,7 +28,6 @@ export function DriverRidePage() {
     try {
       setRide(await updateRideLifecycle(rideId, action));
     } catch (actionError) {
-      // The polling hook continues to preserve the last successful ride.
       setRide((current) => current ? { ...current, actionError: getApiError(actionError) } : current);
     } finally {
       setBusy(false);

@@ -1,11 +1,3 @@
-/**
- * Ride State Machine
- * -------------------
- * Every status change for a ride MUST go through here. This is what
- * keeps rider, driver, and admin views in sync - no one updates
- * `ride.status` directly anywhere else in the codebase.
- */
-
 const VALID_TRANSITIONS = {
   requested: ["accepted", "cancelled_by_rider"],
   accepted: ["arrived", "cancelled_by_rider", "cancelled_by_driver"],
@@ -23,11 +15,6 @@ class InvalidTransitionError extends Error {
   }
 }
 
-/**
- * @param {string} currentStatus
- * @param {string} nextStatus
- * @throws {InvalidTransitionError} if the transition isn't allowed
- */
 function assertValidTransition(currentStatus, nextStatus) {
   const allowed = VALID_TRANSITIONS[currentStatus] || [];
   if (!allowed.includes(nextStatus)) {
@@ -35,11 +22,6 @@ function assertValidTransition(currentStatus, nextStatus) {
   }
 }
 
-/**
- * Applies a status change to a ride document, sets the matching timestamp,
- * and returns the updated ride. Does NOT save - caller decides when to persist
- * (so it can be combined with other field updates, e.g. driver assignment).
- */
 function applyTransition(ride, nextStatus) {
   assertValidTransition(ride.status, nextStatus);
 

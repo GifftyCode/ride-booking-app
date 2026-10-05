@@ -143,8 +143,6 @@ async function getMe(req, res, next) {
 }
 
 function logout(req, res) {
-  // JWTs are stateless; the client removes its token. This endpoint exists for
-  // a complete authenticated API contract and future token revocation support.
   return sendSuccess(res, "Logged out successfully");
 }
 
