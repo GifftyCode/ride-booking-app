@@ -492,22 +492,13 @@ async function getCurrentRiderRide(
 
 async function updateRideStatus(req, res) {
   try {
-    const ride = await Ride.findById(
-      req.params.id
-    );
+    const ride = await Ride.findById(req.params.id);
 
     if (!ride) {
-      return sendError(
-        res,
-        "Ride not found",
-        404
-      );
+      return sendError(res, "Ride not found", 404);
     }
 
-    if (
-      ride.driverId?.toString() !==
-      req.user.id
-    ) {
+    if (ride.driverId?.toString() !== req.user.id) {
       return sendError(
         res,
         "Only the assigned driver can update this ride",
@@ -515,22 +506,17 @@ async function updateRideStatus(req, res) {
       );
     }
 
-    applyTransition(
-      ride,
-      req.body.status
-    );
+    applyTransition(ride, req.body.status);
 
     await ride.save();
 
     if (ride.status === "completed") {
-      await DriverProfile.updateOne(
-        {
-          userId: ride.driverId,
-          activeRideId: ride._id,
-        },
+      await DriverProfile.findOneAndUpdate(
+        { userId: ride.driverId },
         {
           $set: {
             activeRideId: null,
+            isAvailable: true,
           },
         }
       );
@@ -538,19 +524,10 @@ async function updateRideStatus(req, res) {
 
     notifyRideStatusChanged({ ride });
 
-    return sendSuccess(
-      res,
-      "Ride status updated",
-      {
-        ride,
-      }
-    );
+    return sendSuccess(res, "Ride status updated", { ride });
   } catch (error) {
     const statusCode =
-      error.name ===
-      "InvalidTransitionError"
-        ? 400
-        : 500;
+      error.name === "InvalidTransitionError" ? 400 : 500;
 
     return sendError(
       res,
@@ -562,96 +539,137 @@ async function updateRideStatus(req, res) {
   }
 }
 
-async function cancelRide(req, res) {
-  try {
-    const ride = await Ride.findById(
-      req.params.id
-    );
+async function markRideArrived(req, res) {
+  const ride = await Ride.findById(req.params.id);
 
-    if (!ride) {
-      return sendError(
-        res,
-        "Ride not found",
-        404
-      );
-    }
+  if (!ride) {
+    throw httpError(404, "Ride not found");
+  }
 
-    const isRider =
-      req.user.role === "rider" &&
-      ride.riderId.toString() ===
-        req.user.id;
-
-    const isDriver =
-      req.user.role === "driver" &&
-      ride.driverId &&
-      ride.driverId.toString() ===
-        req.user.id;
-
-    if (!isRider && !isDriver) {
-      return sendError(
-        res,
-        "You cannot cancel this ride",
-        403
-      );
-    }
-
-    const nextStatus =
-      req.user.role === "driver"
-        ? "cancelled_by_driver"
-        : "cancelled_by_rider";
-
-    applyTransition(
-      ride,
-      nextStatus
-    );
-
-    ride.cancellationReason = String(
-      req.body.reason ||
-        req.body.cancellationReason ||
-        `Cancelled by ${req.user.role}`
-    ).trim();
-
-    await ride.save();
-
-    if (ride.driverId) {
-      await DriverProfile.updateOne(
-        {
-          userId: ride.driverId,
-          activeRideId: ride._id,
-        },
-        {
-          $set: {
-            activeRideId: null,
-          },
-        }
-      );
-    }
-
-    notifyRideStatusChanged({ ride });
-
-    return sendSuccess(
-      res,
-      "Ride cancelled",
-      {
-        ride,
-      }
-    );
-  } catch (error) {
-    const statusCode =
-      error.name ===
-      "InvalidTransitionError"
-        ? 400
-        : 500;
-
-    return sendError(
-      res,
-      statusCode === 500
-        ? "Could not cancel ride"
-        : error.message,
-      statusCode
+  if (String(ride.driverId) !== req.user.id) {
+    throw httpError(
+      403,
+      "Only the assigned driver can mark this ride as arrived"
     );
   }
+
+  applyTransition(ride, "arrived");
+
+  await ride.save();
+
+  notifyRideStatusChanged({ ride });
+
+  return sendSuccess(res, "Driver marked as arrived", { ride });
 }
+
+async function startRide(req, res) {
+  const ride = await Ride.findById(req.params.id);
+
+  if (!ride) {
+    throw httpError(404, "Ride not found");
+  }
+
+  if (String(ride.driverId) !== req.user.id) {
+    throw httpError(
+      403,
+      "Only the assigned driver can start this ride"
+    );
+  }
+
+  applyTransition(ride, "in_progress");
+
+  await ride.save();
+
+  notifyRideStatusChanged({ ride });
+
+  return sendSuccess(res, "Ride started", { ride });
+}
+
+async function completeRide(req, res) {
+  const ride = await Ride.findById(req.params.id);
+
+  if (!ride) {
+    throw httpError(404, "Ride not found");
+  }
+
+  if (String(ride.driverId) !== req.user.id) {
+    throw httpError(
+      403,
+      "Only the assigned driver can complete this ride"
+    );
+  }
+
+  applyTransition(ride, "completed");
+
+  await ride.save();
+
+  await DriverProfile.findOneAndUpdate(
+    { userId: ride.driverId },
+    {
+      $set: {
+        activeRideId: null,
+        isAvailable: true,
+      },
+    }
+  );
+
+  notifyRideStatusChanged({ ride });
+
+  return sendSuccess(res, "Ride completed", { ride });
+}
+
+async function cancelRide(req, res) {
+  const ride = await Ride.findById(req.params.id);
+
+  if (!ride) {
+    throw httpError(404, "Ride not found");
+  }
+
+  const isRider =
+    req.user.role === "rider" &&
+    String(ride.riderId) === req.user.id;
+
+  const isDriver =
+    req.user.role === "driver" &&
+    ride.driverId &&
+    String(ride.driverId) === req.user.id;
+
+  if (!isRider && !isDriver) {
+    throw httpError(403, "You cannot cancel this ride");
+  }
+
+  const nextStatus =
+    req.user.role === "driver"
+      ? "cancelled_by_driver"
+      : "cancelled_by_rider";
+
+  applyTransition(ride, nextStatus);
+
+  ride.cancellationReason = String(
+    req.body.reason ||
+      req.body.cancellationReason ||
+      `Cancelled by ${req.user.role}`
+  ).trim();
+
+  await ride.save();
+
+  if (ride.driverId) {
+    await DriverProfile.findOneAndUpdate(
+      { userId: ride.driverId },
+      {
+        $set: {
+          activeRideId: null,
+          isAvailable: true,
+        },
+      }
+    );
+  }
+
+  notifyRideStatusChanged({ ride });
+
+  return sendSuccess(res, "Ride cancelled", { ride });
+}
+
 
 async function getMyRideHistory(req, res) {
   const filter =
@@ -679,7 +697,9 @@ module.exports = {
   getAvailableRides,
   getCurrentRiderRide,
   acceptRide,
-  updateRideStatus,
+  markRideArrived,
+  startRide,
+  completeRide,
   cancelRide,
   getMyRideHistory,
 };

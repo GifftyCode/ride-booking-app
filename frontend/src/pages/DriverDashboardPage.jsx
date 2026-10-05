@@ -280,6 +280,12 @@ export function DriverDashboardPage() {
               <strong>{currentRide.riderId?.fullName || "Rider"}</strong>
               {currentRide.riderId?.phone && <a href={`tel:${currentRide.riderId.phone}`}>{currentRide.riderId.phone}</a>}
             </div>
+            <Button
+              variant="primary"
+              onClick={() => navigate(`/driver/rides/${currentRide._id}`)}
+            >
+              Continue ride
+            </Button>
           </article>
         ) : !profile?.isAvailable ? (
           <div className="empty-requests"><strong>You are offline</strong><span>Go online to see available ride requests.</span></div>

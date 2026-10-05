@@ -10,7 +10,9 @@ const {
   getAvailableRides,
   getCurrentRiderRide,
   acceptRide,
-  updateRideStatus,
+  markRideArrived,
+  startRide,
+  completeRide,
   cancelRide,
   getMyRideHistory,
 } = require("../controllers/ride.controller");
@@ -44,8 +46,14 @@ router.get("/:id", requireAuth, asyncHandler(getRide));
 // PATCH /api/rides/:id/accept - Driver accepts a requested ride
 router.patch("/:id/accept", requireAuth, requireRole("driver"), asyncHandler(acceptRide));
 
-// PATCH /api/rides/:id/status  { status: "arrived" | "in_progress" | "completed" }
-router.patch("/:id/status", requireAuth, requireRole("driver"), asyncHandler(updateRideStatus));
+// PATCH /api/rides/:id/arrive - assigned driver marks arrival
+router.patch("/:id/arrive",requireAuth,requireRole("driver"),asyncHandler(markRideArrived));
+
+// PATCH /api/rides/:id/start - assigned driver starts trip
+router.patch("/:id/start",requireAuth,requireRole("driver"),asyncHandler(startRide));
+
+// PATCH /api/rides/:id/complete - assigned driver completes trip
+router.patch("/:id/complete",requireAuth,requireRole("driver"),asyncHandler(completeRide));
 
 // PATCH /api/rides/:id/cancel - either rider or driver
 router.patch("/:id/cancel", requireAuth, asyncHandler(cancelRide));
