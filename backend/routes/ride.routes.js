@@ -5,7 +5,6 @@ const asyncHandler = require("../services/asyncHandler");
 const {
   createRide,
   estimateRide,
-  getCurrentRide,
   getRide,
   getAvailableRides,
   getCurrentRiderRide,
