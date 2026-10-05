@@ -7,7 +7,7 @@
  */
 
 const VALID_TRANSITIONS = {
-  requested: ["accepted", "cancelled_by_rider", "cancelled_by_driver"],
+  requested: ["accepted", "cancelled_by_rider"],
   accepted: ["arrived", "cancelled_by_rider", "cancelled_by_driver"],
   arrived: ["in_progress", "cancelled_by_rider", "cancelled_by_driver"],
   in_progress: ["completed"],

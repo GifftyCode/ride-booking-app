@@ -8,6 +8,7 @@ const {
   getCurrentRiderRide,
   acceptRide,
   updateRideStatus,
+  transitionRide,
   cancelRide,
   getMyRideHistory,
 } = require("../controllers/ride.controller");
@@ -27,7 +28,9 @@ router.get("/current", requireAuth, requireRole("rider"), getCurrentRiderRide);
 // GET /api/rides/available?page=1&limit=10 - available drivers browse requests
 router.get("/available", requireAuth, requireRole("driver"), getAvailableRides);
 
-// GET /api/rides/history/mine - rider or driver's past rides
+// GET /api/rides/history - authenticated rider's paginated history.
+// The existing /history/mine alias remains available for existing clients.
+router.get("/history", requireAuth, getMyRideHistory);
 router.get("/history/mine", requireAuth, getMyRideHistory);
 
 // GET /api/rides/:id - either party views ride status
@@ -35,6 +38,11 @@ router.get("/:id", requireAuth, getRide);
 
 // PATCH /api/rides/:id/accept - Driver accepts a requested ride
 router.patch("/:id/accept", requireAuth, requireRole("driver"), acceptRide);
+
+// Explicit lifecycle actions used by the tracking pages.
+router.patch("/:id/arrive", requireAuth, requireRole("driver"), (req, res) => transitionRide(req, res, "arrived"));
+router.patch("/:id/start", requireAuth, requireRole("driver"), (req, res) => transitionRide(req, res, "in_progress"));
+router.patch("/:id/complete", requireAuth, requireRole("driver"), (req, res) => transitionRide(req, res, "completed"));
 
 // PATCH /api/rides/:id/status  { status: "arrived" | "in_progress" | "completed" }
 router.patch("/:id/status", requireAuth, requireRole("driver"), updateRideStatus);

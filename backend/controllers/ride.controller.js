@@ -1,4 +1,5 @@
 const Ride = require("../models/Ride");
+const mongoose = require("mongoose");
 const DriverProfile = require("../models/DriverProfile");
 const { applyTransition, assertValidTransition } = require("../services/rideStateMachine");
 const { calculateFareEstimate } = require("../services/pricingEngine");
@@ -10,11 +11,55 @@ const { presentRide } = require("../services/ridePresenter");
 const ACTIVE_RIDE_STATUSES = ["accepted", "arrived", "in_progress"];
 const VEHICLE_FIELDS = ["vehicleMake", "vehicleModel", "vehicleColor", "plateNumber"];
 const RIDER_CURRENT_STATUSES = ["requested", ...ACTIVE_RIDE_STATUSES];
+const TERMINAL_STATUSES = ["completed", "cancelled_by_rider", "cancelled_by_driver"];
+
+function createHttpError(message, status = 400) {
+  const error = new Error(message);
+  error.status = status;
+  return error;
+}
+
+// Transactions require a replica set. Local standalone MongoDB installations
+// remain supported by falling back to the same guarded operations.
+async function runWithTransaction(work) {
+  const session = await Ride.startSession();
+  try {
+    let result;
+    await session.withTransaction(async () => {
+      result = await work(session);
+    });
+    return result;
+  } catch (error) {
+    if (/Transaction numbers are only allowed|replica set/i.test(error.message)) {
+      return work(null);
+    }
+    throw error;
+  } finally {
+    await session.endSession();
+  }
+}
+
+function queryWithSession(query, session) {
+  return session ? query.session(session) : query;
+}
 
 async function createRide(req, res) {
   try {
-    const { pickup, destination, distanceInKm = 0, estimatedFare } = req.body;
-    const estimate = estimatedFare ?? calculateFareEstimate({ distanceKm: distanceInKm }).fareEstimate;
+    const { pickup, destination, distanceInKm } = req.body;
+    const locations = [pickup, destination];
+    if (!locations.every((location) => location && typeof location.address === "string" && location.address.trim()
+      && Number.isFinite(location.latitude) && Number.isFinite(location.longitude)
+      && location.latitude >= -90 && location.latitude <= 90 && location.longitude >= -180 && location.longitude <= 180)
+      || !Number.isFinite(distanceInKm) || distanceInKm <= 0) {
+      return sendError(res, "Pickup, destination, and a positive distance are required", 400);
+    }
+    if (pickup.address.trim().toLowerCase() === destination.address.trim().toLowerCase()
+      || (pickup.latitude === destination.latitude && pickup.longitude === destination.longitude)) {
+      return sendError(res, "Pickup and destination must be different", 400);
+    }
+    const existingRide = await Ride.exists({ riderId: req.user.id, status: { $in: RIDER_CURRENT_STATUSES } });
+    if (existingRide) return sendError(res, "You already have an active ride", 409);
+    const estimate = calculateFareEstimate({ distanceKm: distanceInKm }).fareEstimate;
 
     const ride = await Ride.create({
       riderId: req.user.id,
@@ -27,21 +72,24 @@ async function createRide(req, res) {
     const drivers = await findAvailableDrivers({ pickup });
     notifyRideRequested({ ride, drivers });
 
-    res.status(201).json({ ride, matching: { nearbyDrivers: drivers.length } });
-  } catch (err) {
-    res.status(500).json({ error: "Could not create ride", details: err.message });
+    return sendSuccess(res, "Ride requested", { ride, matching: { nearbyDrivers: drivers.length } }, 201);
+  } catch {
+    return sendError(res, "Could not create ride", 500);
   }
 }
 
-async function getRide(req, res) {
+async function getRide(req, res, next) {
+  try {
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) return sendError(res, "Invalid ride identifier", 400);
   const ride = await Ride.findById(req.params.id);
-  if (!ride) return res.status(404).json({ error: "Ride not found" });
+  if (!ride) return sendError(res, "Ride not found", 404);
 
   const isRider = ride.riderId.toString() === req.user.id;
   const isDriver = ride.driverId?.toString() === req.user.id;
   if (!isRider && !isDriver) return sendError(res, "Not authorized to view this ride", 403);
 
-  res.json({ ride: await presentRide(ride) });
+  return sendSuccess(res, "Ride retrieved", { ride: await presentRide(ride) });
+  } catch (error) { return next(error); }
 }
 
 async function getAvailableRides(req, res, next) {
@@ -155,56 +203,114 @@ async function getCurrentRiderRide(req, res, next) {
 
 async function updateRideStatus(req, res) {
   try {
-    const ride = await Ride.findById(req.params.id);
-    if (!ride) return res.status(404).json({ error: "Ride not found" });
-    if (ride.driverId?.toString() !== req.user.id) {
-      return sendError(res, "Only the assigned driver can update this ride", 403);
-    }
-
-    applyTransition(ride, req.body.status);
-    await ride.save();
-
-    if (ride.status === "completed") {
-      await DriverProfile.updateOne(
-        { userId: ride.driverId, activeRideId: ride._id },
-        { $set: { activeRideId: null } }
-      );
-    }
-
-    notifyRideStatusChanged({ ride });
-    res.json({ ride });
+    return transitionRide(req, res, req.body.status);
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    return res.status(err.status || 400).json({ error: err.message });
+  }
+}
+
+async function transitionRide(req, res, nextStatus) {
+  try {
+    if (!["arrived", "in_progress", "completed"].includes(nextStatus)) {
+      throw createHttpError("Invalid driver ride status", 400);
+    }
+
+    const rideId = await runWithTransaction(async (session) => {
+      const ride = await queryWithSession(Ride.findById(req.params.id), session);
+      if (!ride) throw createHttpError("Ride not found", 404);
+      if (ride.driverId?.toString() !== req.user.id) {
+        throw createHttpError("Only the assigned driver can update this ride", 403);
+      }
+
+      applyTransition(ride, nextStatus);
+      await ride.save(session ? { session } : undefined);
+
+      if (nextStatus === "completed") {
+        await queryWithSession(
+          DriverProfile.updateOne(
+            { userId: ride.driverId, activeRideId: ride._id },
+            { $set: { activeRideId: null, isAvailable: true } }
+          ),
+          session
+        );
+      }
+      return ride._id;
+    });
+
+    const ride = await Ride.findById(rideId);
+    notifyRideStatusChanged({ ride });
+    const statusLabel = nextStatus.split("_").map((word) => word[0].toUpperCase() + word.slice(1)).join(" ");
+    return sendSuccess(res, `Ride Marked ${statusLabel}`, { ride: await presentRide(ride) });
+  } catch (err) {
+    return sendError(res, err.status >= 500 ? "Could not update ride" : err.message, err.status || (err.name === "CastError" ? 400 : 500));
   }
 }
 
 async function cancelRide(req, res) {
   try {
-    const ride = await Ride.findById(req.params.id);
-    if (!ride) return res.status(404).json({ error: "Ride not found" });
+    const nextStatus = req.user.role === "driver" ? "cancelled_by_driver" : "cancelled_by_rider";
+    const rideId = await runWithTransaction(async (session) => {
+      const ride = await queryWithSession(Ride.findById(req.params.id), session);
+      if (!ride) throw createHttpError("Ride not found", 404);
 
-    applyTransition(ride, req.user.role === "driver" ? "cancelled_by_driver" : "cancelled_by_rider");
-    ride.cancellationReason = req.body.reason;
-    await ride.save();
+      const isRider = ride.riderId.toString() === req.user.id;
+      const isDriver = ride.driverId?.toString() === req.user.id;
+      if (!isRider && !isDriver) throw createHttpError("Not authorized to cancel this ride", 403);
+      if ((req.user.role === "driver" && !isDriver) || (req.user.role === "rider" && !isRider)) {
+        throw createHttpError("Not authorized to cancel this ride", 403);
+      }
 
-    if (ride.driverId) {
-      await DriverProfile.updateOne(
-        { userId: ride.driverId, activeRideId: ride._id },
-        { $set: { activeRideId: null } }
-      );
-    }
+      applyTransition(ride, nextStatus);
+      if (typeof req.body.reason === "string" && req.body.reason.trim()) {
+        ride.cancellationReason = req.body.reason.trim();
+      }
+      await ride.save(session ? { session } : undefined);
 
+      if (ride.driverId) {
+        await queryWithSession(
+          DriverProfile.updateOne(
+            { userId: ride.driverId, activeRideId: ride._id },
+            { $set: { activeRideId: null, isAvailable: true } }
+          ),
+          session
+        );
+      }
+      return ride._id;
+    });
+
+    const ride = await Ride.findById(rideId);
     notifyRideStatusChanged({ ride });
-    res.json({ ride });
+    return sendSuccess(res, "Ride cancelled", { ride: await presentRide(ride) });
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    return sendError(res, err.status >= 500 ? "Could not cancel ride" : err.message, err.status || (err.name === "CastError" ? 400 : 500));
   }
 }
 
-async function getMyRideHistory(req, res) {
-  const filter = req.user.role === "driver" ? { driverId: req.user.id } : { riderId: req.user.id };
-  const rides = await Ride.find(filter).sort({ createdAt: -1 });
-  res.json({ rides });
+async function getMyRideHistory(req, res, next) {
+  try {
+    const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(50, Math.max(1, Number.parseInt(req.query.limit, 10) || 10));
+    const requestedStatuses = String(req.query.status || "")
+      .split(",").map((status) => status.trim()).filter(Boolean);
+    const validStatuses = new Set([...ACTIVE_RIDE_STATUSES, "requested", ...TERMINAL_STATUSES]);
+    if (requestedStatuses.some((status) => !validStatuses.has(status))) {
+      return sendError(res, "One or more status filters are invalid", 400);
+    }
+
+    const filter = req.user.role === "driver" ? { driverId: req.user.id } : { riderId: req.user.id };
+    filter.status = requestedStatuses.length ? { $in: requestedStatuses } : { $in: TERMINAL_STATUSES };
+    const [rides, total] = await Promise.all([
+      Ride.find(filter).sort({ completedAt: -1, cancelledAt: -1, requestedAt: -1 }).skip((page - 1) * limit).limit(limit),
+      Ride.countDocuments(filter),
+    ]);
+    const presentedRides = await Promise.all(rides.map((ride) => presentRide(ride)));
+    return sendSuccess(res, "Ride history retrieved", {
+      rides: presentedRides,
+      pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+    });
+  } catch (error) {
+    return next(error);
+  }
 }
 
 module.exports = {
@@ -214,6 +320,7 @@ module.exports = {
   getCurrentRiderRide,
   acceptRide,
   updateRideStatus,
+  transitionRide,
   cancelRide,
   getMyRideHistory,
 };

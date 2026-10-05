@@ -6,7 +6,7 @@ export function requestRide(payload) {
 
 export async function getRide(rideId, options = {}) {
   const response = await api.get(`/rides/${rideId}`, options);
-  return response.data.ride;
+  return response.data.data?.ride || response.data.ride;
 }
 
 export async function getCurrentRiderRide() {
@@ -22,4 +22,24 @@ export async function getAvailableRides(page = 1, limit = 10) {
 export async function acceptRide(rideId) {
   const response = await api.patch(`/rides/${rideId}/accept`);
   return response.data.data.ride;
+}
+
+export async function updateRideLifecycle(rideId, action) {
+  const response = await api.patch(`/rides/${rideId}/${action}`);
+  return response.data.data?.ride || response.data.ride;
+}
+
+export async function cancelRide(rideId, reason) {
+  const response = await api.patch(`/rides/${rideId}/cancel`, { reason });
+  return response.data.data?.ride || response.data.ride;
+}
+
+export async function getRideHistory({ page = 1, limit = 10, status = "" } = {}) {
+  const response = await api.get("/rides/history", { params: { page, limit, ...(status ? { status } : {}) } });
+  return response.data.data;
+}
+
+export async function getDriverRideHistory({ page = 1, limit = 10, status = "" } = {}) {
+  const response = await api.get("/drivers/rides/history", { params: { page, limit, ...(status ? { status } : {}) } });
+  return response.data.data;
 }

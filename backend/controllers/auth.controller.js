@@ -1,7 +1,9 @@
 const mongoose = require("mongoose");
 const User = require("../models/User");
 const DriverProfile = require("../models/DriverProfile");
+const AdminInvitation = require("../models/AdminInvitation");
 const { hashPassword, comparePassword, signToken } = require("../services/authService");
+const { hashInvitationToken } = require("../services/adminInvitationService");
 const { sendSuccess, sendError } = require("../services/apiResponse");
 
 function buildAuthPayload(user, token) {
@@ -79,12 +81,47 @@ async function login(req, res, next) {
     const user = await User.findOne({ email }).select("+password");
 
     if (!user) return sendError(res, "Invalid credentials", 401);
+    if (!user.isActive) return sendError(res, "This account is inactive", 403);
 
     const validPassword = await comparePassword(password, user.password);
     if (!validPassword) return sendError(res, "Invalid credentials", 401);
 
     const token = signToken(user);
     return sendSuccess(res, "Login successful", buildAuthPayload(user, token));
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function acceptAdminInvitation(req, res, next) {
+  try {
+    const { token, fullName, phone, password } = req.body;
+    const invitation = await AdminInvitation.findOne({
+      tokenHash: hashInvitationToken(token),
+      acceptedAt: null,
+      expiresAt: { $gt: new Date() },
+    }).select("+tokenHash");
+
+    if (!invitation) return sendError(res, "This invitation is invalid, expired, or has already been used", 400);
+
+    const existingUser = await User.findOne({ $or: [{ email: invitation.email }, { phone }] });
+    if (existingUser) {
+      const field = existingUser.email === invitation.email ? "Email" : "Phone";
+      return sendError(res, `${field} already exists`, 409);
+    }
+
+    const createdUser = await User.create({
+      fullName,
+      email: invitation.email,
+      phone,
+      password: await hashPassword(password),
+      role: "admin",
+    });
+    invitation.acceptedAt = new Date();
+    await invitation.save();
+
+    const authToken = signToken(createdUser);
+    return sendSuccess(res, "Administrator account created", buildAuthPayload(createdUser, authToken), 201);
   } catch (error) {
     return next(error);
   }
@@ -105,4 +142,10 @@ async function getMe(req, res, next) {
   }
 }
 
-module.exports = { register, signup: register, login, getMe };
+function logout(req, res) {
+  // JWTs are stateless; the client removes its token. This endpoint exists for
+  // a complete authenticated API contract and future token revocation support.
+  return sendSuccess(res, "Logged out successfully");
+}
+
+module.exports = { register, signup: register, login, acceptAdminInvitation, getMe, logout };

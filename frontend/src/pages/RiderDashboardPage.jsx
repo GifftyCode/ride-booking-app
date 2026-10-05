@@ -2,11 +2,16 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../components/Button";
 import { Input } from "../components/Input";
+import { PageSkeleton } from "../components/Skeleton";
 import { useAuth } from "../context/AuthContext";
 import { getCurrentRiderRide, requestRide } from "../services/rides.service";
 
 const emptyLocation = { address: "", latitude: "", longitude: "" };
 const emptyForm = { pickup: { ...emptyLocation }, destination: { ...emptyLocation } };
+
+function formatStatus(status) {
+  return status.split("_").map((word) => word[0].toUpperCase() + word.slice(1)).join(" ");
+}
 
 function calculateDistanceInKm(start, end) {
   const radians = (degrees) => degrees * (Math.PI / 180);
@@ -27,6 +32,16 @@ export function RiderDashboardPage() {
   const [submitting, setSubmitting] = useState(false);
   const [locationBusy, setLocationBusy] = useState(false);
   const [error, setError] = useState("");
+  const pickupLatitude = Number(form.pickup.latitude);
+  const pickupLongitude = Number(form.pickup.longitude);
+  const destinationLatitude = Number(form.destination.latitude);
+  const destinationLongitude = Number(form.destination.longitude);
+  const hasRoute = [pickupLatitude, pickupLongitude, destinationLatitude, destinationLongitude].every(Number.isFinite)
+    && form.pickup.address.trim() && form.destination.address.trim();
+  const estimatedDistance = hasRoute
+    ? calculateDistanceInKm({ latitude: pickupLatitude, longitude: pickupLongitude }, { latitude: destinationLatitude, longitude: destinationLongitude })
+    : null;
+  const estimatedFare = estimatedDistance ? 1000 + (estimatedDistance * 500) : null;
 
   useEffect(() => {
     let mounted = true;
@@ -119,7 +134,7 @@ export function RiderDashboardPage() {
     }
   }
 
-  if (loading) return <main className="page-panel driver-loading">Loading your ride...</main>;
+  if (loading) return <PageSkeleton />;
 
   return (
     <main className="dashboard-grid rider-dashboard">
@@ -129,14 +144,14 @@ export function RiderDashboardPage() {
         {activeRide ? (
           <div className="active-ride-notice">
             <div>
-              <strong>Your ride is {activeRide.status.replaceAll("_", " ")}.</strong>
+              <strong>Your ride is {formatStatus(activeRide.status)}.</strong>
               <span>Open tracking to see the latest ride and driver details.</span>
             </div>
             <Link className="btn btn-primary" to={`/rider/rides/${activeRide._id}`}>Continue tracking</Link>
           </div>
         ) : (
           <>
-            <p className="muted">Enter both addresses and their coordinates to request a ride.</p>
+            <p className="muted">Add a pickup and destination to preview your route before requesting a driver.</p>
             <form className="stack" onSubmit={submitRide}>
               {[["pickup", "Pickup"], ["destination", "Destination"]].map(([key, label]) => (
                 <fieldset className="location-fields" key={key}>
@@ -176,6 +191,13 @@ export function RiderDashboardPage() {
                   )}
                 </fieldset>
               ))}
+              <aside className="fare-preview" aria-live="polite">
+                <div>
+                  <span>Estimated Fare</span>
+                  <strong>{estimatedFare ? `NGN ${Math.round(estimatedFare).toLocaleString()}` : "Add Route Details"}</strong>
+                </div>
+                <small>{estimatedDistance ? `${estimatedDistance.toFixed(1)} km · Demo fare: NGN 1,000 base + NGN 500/km` : "Your estimated distance and fare will appear here."}</small>
+              </aside>
               {error && <p className="form-error" role="alert">{error}</p>}
               <Button type="submit" disabled={submitting}>{submitting ? "Requesting ride..." : "Request ride"}</Button>
             </form>
@@ -183,9 +205,15 @@ export function RiderDashboardPage() {
         )}
       </section>
       <aside className="page-panel rider-booking-aside">
-        <p className="eyebrow green-text">Your ride</p>
-        <h2>From request to pickup</h2>
-        <p className="muted">Your request is shared with available drivers. Once accepted, their safe contact and vehicle details appear in tracking.</p>
+        <img className="booking-aside-image" src="/assets/booking-phone.webp" alt="Rider confirming a trip on a phone" />
+        <p className="eyebrow green-text">Your Ride</p>
+        <h2>From request to destination</h2>
+        <p className="muted">Your request is shared with available drivers. When a driver accepts, their contact and vehicle details appear in live tracking.</p>
+        <ol className="booking-steps">
+          <li><strong>1. Request</strong><span>Share your pickup and destination.</span></li>
+          <li><strong>2. Match</strong><span>Follow the driver assignment in real time.</span></li>
+          <li><strong>3. Ride</strong><span>Track arrival, trip start, and completion.</span></li>
+        </ol>
       </aside>
     </main>
   );

@@ -5,8 +5,18 @@ const { connectDatabase, closeDatabase } = require("./config/database");
 
 const PORT = process.env.PORT || 5000;
 
+function validateEnvironment() {
+  const required = ["MONGO_URI", "JWT_SECRET"];
+  const missing = required.filter((name) => !process.env[name]);
+  if (missing.length) throw new Error(`Missing required environment variables: ${missing.join(", ")}`);
+  if (process.env.NODE_ENV === "production" && !process.env.CLIENT_URL) {
+    throw new Error("CLIENT_URL is required in production");
+  }
+}
+
 const startServer = async () => {
   try {
+    validateEnvironment();
     await connectDatabase();
 
     const server = createApp().listen(PORT, () => {

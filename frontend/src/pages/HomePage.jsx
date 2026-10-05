@@ -6,23 +6,24 @@ export function HomePage() {
 
   if (user?.role === "rider") return <Navigate to="/rider/dashboard" replace />;
   if (user?.role === "driver") return <Navigate to="/driver/dashboard" replace />;
+  if (user?.role === "admin") return <Navigate to="/admin/dashboard" replace />;
 
   return (
     <main className="home-flow">
       <section className="hero">
         <div className="hero-copy">
-          <p className="hero-kicker">Reliable trips for riders and drivers</p>
+          <p className="hero-kicker">Reliable Trips for Riders and Drivers</p>
           <h1>Book a ride in minutes and keep every trip on track.</h1>
           <p>
-            Create a rider or driver account, sign in securely, and land on the dashboard built for
-            your role. The app is already connected to the backend authentication flow.
+            Request a ride, match with an available driver, follow each trip update, and return to
+            your ride history when the journey is complete.
           </p>
           <div className="hero-actions">
             <Link className="btn btn-primary" to="/register">
-              Get started
+              Get Started
             </Link>
             <Link className="btn btn-secondary" to="/login">
-              Sign in
+              Sign In
             </Link>
           </div>
         </div>
@@ -30,7 +31,7 @@ export function HomePage() {
         <aside className="trip-preview" aria-label="Ride booking preview">
           <div className="hero-ride-image">
             <img src="/assets/ride-vehicle.webp" alt="Blue car ready for a ride" />
-            <span className="ride-image-tag">Ready nearby</span>
+            <span className="ride-image-tag">Driver Ready Nearby</span>
           </div>
           <div className="trip-card">
             <div>
@@ -52,31 +53,31 @@ export function HomePage() {
       <section className="feature-grid">
         <article className="info-card">
           <span className="card-mark blue-mark">01</span>
-          <h2>Rider onboarding</h2>
-          <p>Create an account, restore your session, and move straight into your rider dashboard.</p>
+          <h2>Book With Confidence</h2>
+          <p>Enter your journey details, see an estimated fare, and track the request from pickup to arrival.</p>
         </article>
         <article className="info-card">
           <span className="card-mark green-mark">02</span>
-          <h2>Driver profiles</h2>
-          <p>Driver registration captures vehicle make, model, colour and plate number.</p>
+          <h2>Drive On Your Terms</h2>
+          <p>Manage availability, keep vehicle information current, and accept one trip at a time.</p>
         </article>
         <article className="info-card">
           <span className="card-mark gold-mark">03</span>
-          <h2>Protected access</h2>
-          <p>Routes are role-aware, so riders and drivers only see the screens meant for them.</p>
+          <h2>Stay In The Loop</h2>
+          <p>Clear status updates let riders and drivers know what happens next throughout every journey.</p>
         </article>
       </section>
 
       <section className="workflow-band">
         <div>
-          <p className="eyebrow green-text">How it feels</p>
+          <p className="eyebrow green-text">How It Works</p>
           <h2>Request, match, ride, complete.</h2>
         </div>
         <div className="workflow-steps">
-          <span>Choose pickup</span>
-          <span>Confirm fare</span>
-          <span>Meet driver</span>
-          <span>Track status</span>
+          <span>Choose Pickup</span>
+          <span>Confirm Fare</span>
+          <span>Meet Driver</span>
+          <span>Track Status</span>
         </div>
       </section>
     </main>

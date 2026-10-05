@@ -14,6 +14,7 @@ export function LoginPage() {
 
   if (user?.role === "rider") return <Navigate to="/rider/dashboard" replace />;
   if (user?.role === "driver") return <Navigate to="/driver/dashboard" replace />;
+  if (user?.role === "admin") return <Navigate to="/admin/dashboard" replace />;
 
   const update = (event) => setForm({ ...form, [event.target.name]: event.target.value });
 
@@ -29,7 +30,7 @@ export function LoginPage() {
     setLoading(true);
     try {
       const loggedInUser = await login(form);
-      const fallback = loggedInUser.role === "driver" ? "/driver/dashboard" : "/rider/dashboard";
+      const fallback = loggedInUser.role === "admin" ? "/admin/dashboard" : loggedInUser.role === "driver" ? "/driver/dashboard" : "/rider/dashboard";
       navigate(location.state?.from?.pathname || fallback, { replace: true });
     } catch (apiError) {
       setError(getApiError(apiError));

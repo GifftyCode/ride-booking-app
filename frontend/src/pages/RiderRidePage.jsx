@@ -1,11 +1,47 @@
+import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { Button } from "../components/Button";
+import { ConfirmCancelDialog } from "../components/ConfirmCancelDialog";
+import { PageSkeleton } from "../components/Skeleton";
+import { useAuth } from "../context/AuthContext";
 import { useRideStatus } from "../hooks/useRideStatus";
+import { cancelRide } from "../services/rides.service";
+
+const STATUS_MESSAGES = {
+  requested: "Finding a driver",
+  accepted: "Driver is travelling to the pickup location",
+  arrived: "Driver has arrived",
+  in_progress: "Trip is in progress",
+  completed: "Trip completed",
+  cancelled_by_rider: "Trip cancelled",
+  cancelled_by_driver: "Trip cancelled",
+};
+const TERMINAL_STATUSES = new Set(["completed", "cancelled_by_rider", "cancelled_by_driver"]);
+const formatStatus = (status) => status.split("_").map((word) => word[0].toUpperCase() + word.slice(1)).join(" ");
 
 export function RiderRidePage() {
   const { rideId } = useParams();
-  const { ride, loading, error, notFound } = useRideStatus(rideId);
+  const { getApiError } = useAuth();
+  const { ride, setRide, loading, error, notFound, statusNotice } = useRideStatus(rideId);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [actionError, setActionError] = useState("");
 
-  if (loading && !ride) return <main className="page-panel driver-loading" aria-live="polite">Loading ride tracking...</main>;
+  async function confirmCancellation() {
+    setBusy(true);
+    setActionError("");
+    try {
+      setRide(await cancelRide(rideId, reason));
+      setShowCancelDialog(false);
+    } catch (cancelError) {
+      setActionError(getApiError(cancelError));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (loading && !ride) return <PageSkeleton variant="tracking" />;
   if (notFound) {
     return (
       <main className="page-panel tracking-page">
@@ -34,16 +70,17 @@ export function RiderRidePage() {
     <main className="page-panel tracking-page">
       <p className="eyebrow blue-text">Ride tracking</p>
       <div className="tracking-title">
-        <h1>{ride.status.replaceAll("_", " ")}</h1>
-        <span className={`status-pill ${ride.status === "accepted" ? "status-confirmed" : "status-pending"}`}>
-          {ride.status === "accepted" ? "Driver assigned" : "Finding a driver"}
+        <h1>{formatStatus(ride.status)}</h1>
+        <span className={`status-pill ${ride.status === "accepted" || ride.status === "arrived" || ride.status === "in_progress" ? "status-confirmed" : "status-pending"}`}>
+          {STATUS_MESSAGES[ride.status]}
         </span>
       </div>
       <p className="muted" role="status">
-        {ride.status === "requested" ? "Your request is visible to available drivers." : "Your driver has accepted the ride."}
-        {" "}Updates refresh automatically.
+        {STATUS_MESSAGES[ride.status]}. {!TERMINAL_STATUSES.has(ride.status) && "Updates refresh automatically."}
       </p>
       {error && <p className="form-error" role="alert">Live update failed: {error}. Retrying automatically.</p>}
+      {actionError && <p className="form-error" role="alert">{actionError}</p>}
+      {statusNotice && <p className="form-success" role="status">{statusNotice}</p>}
 
       <div className="tracking-grid">
         <section className="tracking-block">
@@ -74,7 +111,22 @@ export function RiderRidePage() {
           </section>
         )}
       </div>
-      <Link className="text-link" to="/rider/dashboard">Back to rider dashboard</Link>
+      <div className="trip-actions">
+        {["requested", "accepted", "arrived"].includes(ride.status) && (
+          <Button type="button" variant="danger" disabled={busy} onClick={() => setShowCancelDialog(true)}>Cancel ride</Button>
+        )}
+        <Link className="btn btn-secondary" to="/rider/dashboard">
+          {TERMINAL_STATUSES.has(ride.status) ? "Return to dashboard" : "Back to rider dashboard"}
+        </Link>
+      </div>
+      <ConfirmCancelDialog
+        open={showCancelDialog}
+        reason={reason}
+        onReasonChange={setReason}
+        onConfirm={confirmCancellation}
+        onClose={() => setShowCancelDialog(false)}
+        busy={busy}
+      />
     </main>
   );
 }

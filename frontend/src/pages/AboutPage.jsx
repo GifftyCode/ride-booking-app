@@ -4,25 +4,24 @@ export function AboutPage() {
       <section className="page-panel split-panel">
         <div>
           <p className="eyebrow blue-text">About</p>
-          <h1>Built for real ride workflows</h1>
+          <h1>Built for complete ride journeys</h1>
           <p className="muted">
-            This app separates rider accounts, driver accounts, vehicle profiles, protected routes,
-            and server-side authentication so later ride matching and trip flows can build on a
-            stable base.
+            From the first booking to trip completion, Ride Booking keeps riders, drivers, vehicle
+            details, availability, and secure account access connected in one clear experience.
           </p>
         </div>
         <div className="status-stack">
           <div>
             <span>Authentication</span>
-            <strong>JWT secured</strong>
+            <strong>JWT-Secured</strong>
           </div>
           <div>
             <span>Database</span>
-            <strong>MongoDB ready</strong>
+            <strong>MongoDB-Connected</strong>
           </div>
           <div>
             <span>Roles</span>
-            <strong>Rider + Driver</strong>
+            <strong>Riders and Drivers</strong>
           </div>
         </div>
       </section>
@@ -30,15 +29,15 @@ export function AboutPage() {
       <section className="feature-grid">
         <article className="info-card">
           <h2>For riders</h2>
-          <p>Fast onboarding and a dedicated dashboard prepared for ride requests and history.</p>
+          <p>Request a ride, follow the driver’s progress, cancel when eligible, and revisit completed journeys.</p>
         </article>
         <article className="info-card">
           <h2>For drivers</h2>
-          <p>Driver accounts include the vehicle data needed for future matching and verification.</p>
+          <p>Set availability, manage vehicle details, accept requests, and complete trips one step at a time.</p>
         </article>
         <article className="info-card">
           <h2>For the platform</h2>
-          <p>Consistent API responses, route protection, seed data and health checks are in place.</p>
+          <p>Protected routes, safe API responses, fare estimates, and live status refreshes keep each trip reliable.</p>
         </article>
       </section>
     </main>
